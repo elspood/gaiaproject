@@ -5,7 +5,7 @@ import java.util.Vector;
 public enum RoundBooster {
 	
 	KNOWORE(new Income[] {new Income(ResourceType.ORE, 1), new Income(ResourceType.KNOWLEDGE, 1)}, null, null),
-	POWORE(new Income[] {new Income(ResourceType.ORE, 1), new Income(ResourceType.B1POWER, 2)}, null, null),
+	POWORE(new Income[] {new Income(ResourceType.ORE, 1), new Income(ResourceType.POWER, 2)}, null, null),
 	QICCASH(new Income[] {new Income(ResourceType.CREDITS, 2), new Income(ResourceType.QIC, 1)}, null, null),
 	TERRA(new Income[] {new Income(ResourceType.CREDITS, 2)}, SpecialAction.TERRAFORM, null),
 	RANGE(new Income[] {new Income(ResourceType.CHARGE, 2)}, SpecialAction.RANGE3, null),

@@ -57,7 +57,7 @@ public class GaiaProject {
 		GameState state = new GameState(4, map, rs, fs, boosters, tech);
 
 		Action[] choices;
-		while ((choices = state.actionChoices()) != null) {
+		while ((choices = state.getActionChoices()) != null) {
 			System.out.println(state);
 			ActionType type = null;
 			int length = 0;

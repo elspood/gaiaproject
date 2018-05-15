@@ -111,6 +111,14 @@ public class Map {
 		init(layout);
 	}
 	
+	public PlanetType get(Coordinates c) {
+		return get(c.col(), c.row());
+	}
+	
+	public void gaiaform(Coordinates c) {
+		grid[c.col()][c.row()] = PlanetType.GAIA;
+	}
+	
 	public PlanetType get(int col, int row) {
 		return grid[col][row];
 	}

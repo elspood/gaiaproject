@@ -96,7 +96,7 @@ public class Research {
 			break;
 		case GAIA:
 			if ((lvl == 1) || (lvl == 3) || (lvl == 4)) income.add(new Income(ResourceType.GF, 1));
-			else if (lvl == 2) income.add(new Income(ResourceType.B1POWER, 3));
+			else if (lvl == 2) income.add(new Income(ResourceType.POWER, 3));
 			else if (lvl == 5) income.add(new Income(ResourceType.GVP, 1));
 			break;
 		case ECON:

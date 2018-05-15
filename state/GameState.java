@@ -11,6 +11,7 @@ public class GameState {
 
 	private Faction[] player;
 	private int[] turnorder;
+	private int[] passorder;
 	private Map map;
 	private RoundScore[] roundscore;
 	private FinalScore[] victoryconditions;
@@ -22,6 +23,7 @@ public class GameState {
 	private int round = -1;
 	private int draft = 1;
 	private State state = State.FACTIONDRAFT;
+	private BowlState[] bowlstates;
 	
 	private Vector<Action> actionlist = new Vector<Action>();
 	
@@ -33,6 +35,7 @@ public class GameState {
 			Vector<RoundBooster> boosters, Research tech) {
 		player = new Faction[players];
 		turnorder = new int[players];
+		passorder = new int[players];
 		this.finalscore = new int[victoryconditions.length][players];
 		this.map = map;
 		this.roundscore = roundscore;
@@ -72,10 +75,54 @@ public class GameState {
 	}
 	
 	private Action[] incomeChoices() {
+		System.out.println("Collecting income for " + playerDisplayName(currentplayer));
 		Vector<Income> income = tech.income(currentplayer);
-		// TODO: return possible bowl states over all orders of taking power income
+		bowlstates = player[currentplayer].roundIncome(income);
+		if (bowlstates != null) {
+			Action[] choices = new Action[bowlstates.length];
+			for (int i=0; i < bowlstates.length; i++) {
+				choices[i] = new Action(currentplayer, ActionType.CHARGEPOWER, i, "Charge power to: " + bowlstates[i]);
+			}
+			return choices;
+		}
 		// if no income choices, call again with next player
-		// if no income choices for any player, return null
+		currentplayer++;
+		if (currentplayer < player.length) return incomeChoices();
+
+		// if no income decisions for any player, move to gaia phase
+		currentplayer = 0;
+		state = State.GAIA;
+		return gaiaChoices();
+	}
+	
+	private Action[] gaiaChoices() {
+		Faction f = player[currentplayer];
+		Vector<Coordinates> gfs = f.gaiaformerLocations();
+		int size = gfs.size();
+		for (int i=0; i < size; i++) {
+			Coordinates c = gfs.get(i);
+			if (map.get(c) == PlanetType.TRANSDIM) {
+				map.gaiaform(c);
+				System.out.println(playerDisplayName(currentplayer) + " gaiaformed at " + c);
+			}
+		}
+		Action[] ga = f.gaiaBowlActions();
+		if (ga != null) return ga;
+		
+		System.out.println("Completed gaia phase for " + playerDisplayName(currentplayer));
+		currentplayer++;
+		
+		// if no gaia choices, call again with next player
+		if (currentplayer < player.length) return gaiaChoices();
+
+		// if no gaia decisions for last player, move to action phase
+		currentplayer = 0;
+		state = State.ACTIONS;
+		return actionChoices();
+	}
+	
+	private Action[] actionChoices() {
+		return null;
 	}
 	
 	private boolean draft(Action a) {
@@ -193,7 +240,31 @@ public class GameState {
 		return true;
 	}
 	
-	public Action[] actionChoices() {
+	private boolean chargePower(Action a) {
+		int player = a.player();
+		if (state != State.INCOME)
+			throw new IllegalStateException("Could not charge power; current state is " + state);
+		int i = 0;
+		if (a.info() instanceof Integer) i = (int)a.info();
+		else throw new IllegalArgumentException("Expected integer argument; received " + a.info().getClass().getName());
+
+		if ((i < 0) || (i >= bowlstates.length))
+			throw new IllegalArgumentException("Unavailable power charge choice index: " + i + " is out of bounds");
+		
+		Faction f = this.player[player];
+		f.setPower(bowlstates[i]);
+		
+		System.out.println(playerDisplayName(player) + " charged power to: " + bowlstates[i]);
+		
+		currentplayer++;
+		if (currentplayer == this.player.length) {
+			currentplayer = 0;
+			state = State.GAIA;
+		}
+		return true;
+	}
+	
+	public Action[] getActionChoices() {
 		switch (state) {
 		case FACTIONDRAFT: return factionDraftChoices();
 		case PLANETDRAFT: return planetDraftChoices();
@@ -212,6 +283,7 @@ public class GameState {
 		case DRAFT: return draft(a);
 		case HOMEPLANET: return planetDraft(a);
 		case CHOOSEBONUS: return chooseBooster(a);
+		case CHARGEPOWER: return chargePower(a);
 		}
 		throw new IllegalArgumentException("No handler specified for action " + a);
 	}

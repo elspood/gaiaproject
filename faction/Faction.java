@@ -1,8 +1,11 @@
 package faction;
 
 import java.util.EnumMap;
+import java.util.Vector;
 
+import state.Action;
 import state.Bank;
+import state.BowlState;
 import state.Coordinates;
 import state.Income;
 import state.PlanetType;
@@ -10,6 +13,7 @@ import state.ResourceType;
 import state.RoundBooster;
 import state.ScienceTrack;
 import state.SpecialAction;
+import state.TechTile;
 
 public abstract class Faction {
 
@@ -40,7 +44,7 @@ public abstract class Faction {
 	};
 	protected Income[] incomeForPI = {
 			new Income(ResourceType.CHARGE, 4),
-			new Income(ResourceType.B1POWER, 1),
+			new Income(ResourceType.POWER, 1),
 	};
 	protected Income incomeForAcademy = new Income(ResourceType.KNOWLEDGE, 2);
 	protected SpecialAction actionForAcademy = SpecialAction.QIC;
@@ -54,7 +58,11 @@ public abstract class Faction {
 	protected Coordinates[] lab = new Coordinates[3];
 	protected Coordinates[] acad = new Coordinates[2];
 	protected Coordinates pi = null;
+	protected Coordinates[] gf = new Coordinates[3];
+	
 	protected RoundBooster booster = null;
+	protected TechTile[] techtile = new TechTile[TechTile.values().length];
+	protected boolean[] coveredtile = new boolean[techtile.length];
 	
 	public boolean placeMine(int col, int row) {
 		Coordinates c = new Coordinates(col, row);
@@ -69,6 +77,10 @@ public abstract class Faction {
 		return false;
 	}
 	
+	public void setPower(BowlState s) {
+		bank.setPower(s);
+	}
+	
 	public RoundBooster swapBooster(RoundBooster next) {
 		RoundBooster old = booster;
 		booster = next;
@@ -79,6 +91,18 @@ public abstract class Faction {
 		for (int i=0; i < 8; i++)
 			if (mine[i] == null) return i;
 		return 8;
+	}
+	
+	public int ts() {
+		for (int i=0; i < 4; i++)
+			if (ts[i] == null) return i;
+		return 4;
+	}
+
+	public int labs() {
+		for (int i=0; i < 3; i++)
+			if (lab[i] == null) return i;
+		return 3;
 	}
 	
 	public String name() {
@@ -94,7 +118,63 @@ public abstract class Faction {
 		return starttrack;
 	}
 	
-	public void income(Income i) {
-		bank.income(i);
+	public BowlState[] roundIncome(Vector<Income> techIncome) {
+		// calculates all income and returns an array of possible board states
+		// returns null if there are no choices about power income to be made
+		
+		// add building income
+		techIncome.add(incomeForMines[mines()]);
+		techIncome.add(incomeForTS[ts()]);
+		techIncome.add(incomeForLabs[labs()]);
+		if (acad[0] != null) techIncome.add(incomeForAcademy);
+		if (pi != null) for (Income i : incomeForPI) techIncome.add(i);
+		
+		// add booster and tech tile income
+		for (Income i : booster.income()) techIncome.add(i);
+		for (int i=0; i < techtile.length; i++)
+			if ((techtile[i] != null) && (coveredtile[i] == false) && (techtile[i].incomePhase()))
+				for (Income inc : techtile[i].income()) techIncome.add(inc);
+		
+		Vector<Income> powerIncome = new Vector<Income>();
+		for (Income i : techIncome)
+			if ((i.type() == ResourceType.POWER) || (i.type() == ResourceType.CHARGE))
+				powerIncome.add(i);
+			else income(i);
+		
+		return bank.powerIncome(powerIncome);
+	}
+	
+	public Action[] gaiaBowlActions() {
+		int power = bank.emptyGaiaBowl();
+		if (power > 0)
+			income(new Income(ResourceType.POWER, power));
+		return null;
+	}
+	
+	public void income(Income inc) {
+		if (inc.type() == ResourceType.GF) {
+			for (int i=0; i < gf.length; i++) if (gf[i] == null) {
+				gf[i] = Coordinates.HANGAR;
+				return;
+			}
+			throw new IllegalStateException("No room for additional gaiaformer in hangar");
+		}
+		bank.income(inc);
+	}
+	
+	public Vector<Coordinates> gaiaformerLocations() {
+		Vector<Coordinates> locations = new Vector<Coordinates>();
+		for (Coordinates c : gf) if ((c != null) && (c.col() >= 0) && (c.row() >= 0))
+				locations.add(c);
+		return locations;
+	}
+	
+	public String toString() {
+		StringBuilder sb = new StringBuilder();
+		sb.append(name + " " + bank);
+		if (booster != null) sb.append("Booster: " + booster + " ");
+		for (int i=0; i < techtile.length; i++) if (techtile[i] != null) sb.append(techtile[i] + " ");
+		sb.append("\n");
+		return sb.toString();
 	}
 }

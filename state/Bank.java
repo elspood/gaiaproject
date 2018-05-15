@@ -1,4 +1,7 @@
 package state;
+
+import java.util.Vector;
+
 public class Bank {
 	
 	public static final int MAXORE = 15;
@@ -8,13 +11,10 @@ public class Bank {
 	private int ore = 4;
 	private int credits = 15;
 	private int knowledge = 3;
-	private int gaiaformers = 0;
 	private int qic = 1;
 	private int vp = 10;
-	private int b1 = 2;
-	private int b2 = 4;
-	private int b3 = 0;
-	private int bg = 0;
+	private BowlState bowls = new BowlState(2, 4, 0);
+	private int gaiabowl = 0;
 	
 	private FederationToken[] feds = new FederationToken[10];
 	private boolean[] fedused = new boolean[10];
@@ -27,6 +27,14 @@ public class Bank {
 		for (Income i : nonstandard) income(i);
 	}
 	
+	public Bank(BowlState nonstandard) {
+		bowls = nonstandard;
+	}
+	
+	public void setPower(BowlState power) {
+		bowls = power;
+	}
+	
 	private void gainFederation(int id) {
 		FederationToken fed = FederationToken.values()[id];
 		int i = 0;
@@ -36,6 +44,26 @@ public class Bank {
 		for (Income inc : fed.income()) income(inc);
 	}
 	
+	public int emptyGaiaBowl() {
+		int power = gaiabowl;
+		gaiabowl = 0;
+		return power;
+	}
+	
+	/**
+	 * @param powerIncome A vector of atomic power income actions (charge and new tokens)
+	 * @return A vector of possible bowl states after charging in various orders;
+	 * 			If only one state is possible, the bank is updated with the new state and null is returned
+	 */
+	public BowlState[] powerIncome(Vector<Income> powerIncome) {
+		BowlState[] states = bowls.bowlStates(powerIncome);
+		if (states.length > 1) return states;
+		if (states.length == 1) {
+			bowls = states[0];
+		}
+		return null;
+	}
+	
 	public void income(Income i) {
 		switch (i.type()) {
 		case ORE: ore = Math.min(ore + i.amount(), MAXORE); break;
@@ -43,11 +71,20 @@ public class Bank {
 		case KNOWLEDGE: knowledge = Math.min(knowledge + i.amount(), MAXORE); break;
 		case VP: vp += i.amount(); break;
 		case QIC: qic += i.amount(); break;
-		case GF: gaiaformers += i.amount(); break;
-		case FED: gainFederation (i.amount()); break;
-		case B1POWER: b1 += i.amount(); break;
-		case B2POWER: b2 += i.amount(); break;
+		case FED: gainFederation(i.amount()); break;
+		case POWER: bowls.newPower(i.amount()); break;
 		default: throw new IllegalArgumentException("Unhandled bank income for " + i.type());
 		}
+	}
+	
+	public String toString() {
+		String s = "VP: " + vp + " " + credits + "c " + ore + "o " + knowledge + "K " + qic + "q " +
+				bowls + " " + gaiabowl + "\nFederations: ";
+		for (int i=0; i < feds.length; i++) {
+			if (feds[i] == null) break;
+			s += feds[i];
+		}
+		s += "\n";
+		return s;
 	}
 }

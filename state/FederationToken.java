@@ -3,7 +3,7 @@ package state;
 public enum FederationToken {
 	VP(new Income[] {new Income(ResourceType.VP, 12)}, false),
 	QIC(new Income[] {new Income(ResourceType.VP, 8), new Income(ResourceType.QIC, 1)}),
-	POWER(new Income[] {new Income(ResourceType.VP, 8), new Income(ResourceType.B1POWER, 2)}),
+	POWER(new Income[] {new Income(ResourceType.VP, 8), new Income(ResourceType.POWER, 2)}),
 	ORE(new Income[] {new Income(ResourceType.VP, 7), new Income(ResourceType.ORE, 2)}),
 	CREDIT(new Income[] {new Income(ResourceType.VP, 7), new Income(ResourceType.CREDITS, 6)}),
 	KNOW(new Income[] {new Income(ResourceType.VP, 6), new Income(ResourceType.KNOWLEDGE, 2)}),
