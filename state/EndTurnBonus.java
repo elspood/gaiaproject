@@ -8,5 +8,4 @@ public enum EndTurnBonus {
 	GAIA,			// 1vp per colonized GP
 	FEDERATION,		// 3vp per federation tile
 	UNIQUE,			// 1vp per unique planettype colonized
-	
 }

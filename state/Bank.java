@@ -16,6 +16,7 @@ public class Bank {
 	private BowlState bowls = new BowlState(2, 4, 0);
 	private int gaiabowl = 0;
 	
+	int federations = 0;
 	private FederationToken[] feds = new FederationToken[10];
 	private boolean[] fedused = new boolean[10];
 	
@@ -37,11 +38,14 @@ public class Bank {
 	
 	private void gainFederation(int id) {
 		FederationToken fed = FederationToken.values()[id];
-		int i = 0;
-		while (feds[i] != null) i++;
-		feds[i] = fed;
-		fedused[i] = !fed.spendable();
+		feds[federations] = fed;
+		fedused[federations] = !fed.spendable();
 		for (Income inc : fed.income()) income(inc);
+		federations++;
+	}
+	
+	public int federations() {
+		return federations;
 	}
 	
 	public int emptyGaiaBowl() {
@@ -56,6 +60,7 @@ public class Bank {
 	 * 			If only one state is possible, the bank is updated with the new state and null is returned
 	 */
 	public BowlState[] powerIncome(Vector<Income> powerIncome) {
+		if (powerIncome.size() == 0) return null;
 		BowlState[] states = bowls.bowlStates(powerIncome);
 		if (states.length > 1) return states;
 		if (states.length == 1) {
@@ -75,6 +80,18 @@ public class Bank {
 		case POWER: bowls.newPower(i.amount()); break;
 		default: throw new IllegalArgumentException("Unhandled bank income for " + i.type());
 		}
+	}
+	
+	public int ore() {
+		return ore;
+	}
+	
+	public int maxBurn() {
+		return bowls.maxBurn();
+	}
+	
+	public int spendablePower() {
+		return bowls.spendablePower();
 	}
 	
 	public String toString() {

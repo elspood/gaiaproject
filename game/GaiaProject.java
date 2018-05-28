@@ -1,5 +1,6 @@
 package game;
 import java.util.InputMismatchException;
+import java.util.NoSuchElementException;
 import java.util.Random;
 import java.util.Scanner;
 import java.util.Vector;
@@ -53,10 +54,18 @@ public class GaiaProject {
 		FinalScore[] fs = FinalScore.randomize(seed);
 		Vector<RoundBooster> boosters = RoundBooster.randomize(seed, players);
 		Research tech = Research.randomize(players, seed);
+		/*
+		Beginner map conditions:
+		HADSCH HALLAS:	H7, L4
+		TAKLONS:		H6, R6
+		TERRAN:			E3, M8
+		XENOS:			J2, N8, Q5
+		*/
 		
 		GameState state = new GameState(4, map, rs, fs, boosters, tech);
 
 		Action[] choices;
+		Scanner in = new Scanner(System.in);
 		while ((choices = state.getActionChoices()) != null) {
 			System.out.println(state);
 			ActionType type = null;
@@ -78,32 +87,22 @@ public class GaiaProject {
 			}
 			System.out.println();
 			while (true) {
-				System.out.println(state.playerDisplayName(choices[0].player()) + " action choice");
-				Scanner in = new Scanner(System.in);
-				int choice = in.nextInt();
+				System.out.print(state.playerDisplayName(choices[0].player()) + " action choice: ");
 				try {
-					if (!state.takeAction(choices[choice])) {
-						System.err.println("Failed to take action " + choices[choice]);
-						return;
-					}
+					String line = in.nextLine();
+					int choice = (line.length() == 0) ? 0 : Integer.parseInt(line);
+					state.takeAction(choices[choice]);
 					break;
 				} catch (ArrayIndexOutOfBoundsException e) {}
 				catch (InputMismatchException e) {}
+				catch (NoSuchElementException e) {}
+				catch (NumberFormatException e) {}
 			}
 		}
-		/*
-		state.placeMine(4, 3, 0);
-		state.placeMine(12, 8, 0);
-		state.placeMine(11, 4, 1);
-		state.placeMine(7, 7, 1);
-		state.placeMine(9, 2, 2);
-		state.placeMine(16, 5, 2);
-		state.placeMine(13, 8, 2);
-		state.placeMine(7, 6, 3);
-		state.placeMine(17, 6, 3);
-		*/
+		in.close();
 		
 		System.out.println(state);
+		System.out.println("Game over");
 	}
 
 }

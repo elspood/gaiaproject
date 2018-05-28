@@ -1,6 +1,5 @@
 package faction;
 
-import state.Bank;
 import state.Income;
 import state.PlanetType;
 import state.ResourceType;
@@ -8,7 +7,7 @@ import state.ScienceTrack;
 
 public class Xenos extends Faction {
 
-	private static final Income[] xenosIncomeForPI = {
+	private static final Income[] PIINCOME = {
 			new Income(ResourceType.CHARGE, 4),
 			new Income(ResourceType.QIC, 1),
 	};
@@ -16,7 +15,7 @@ public class Xenos extends Faction {
 	public Xenos() {
 		homeplanet = PlanetType.YELLOW;
 		starttrack = ScienceTrack.AI;
-		incomeForPI = xenosIncomeForPI;
+		incomeForPI = PIINCOME;
 		name = "Xenos";
 	}
 }

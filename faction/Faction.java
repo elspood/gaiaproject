@@ -4,9 +4,11 @@ import java.util.EnumMap;
 import java.util.Vector;
 
 import state.Action;
+import state.AdvTech;
 import state.Bank;
 import state.BowlState;
 import state.Coordinates;
+import state.EndTurnBonus;
 import state.Income;
 import state.PlanetType;
 import state.ResourceType;
@@ -49,7 +51,6 @@ public abstract class Faction {
 	protected Income incomeForAcademy = new Income(ResourceType.KNOWLEDGE, 2);
 	protected SpecialAction actionForAcademy = SpecialAction.QIC;
 	protected ScienceTrack starttrack = null;
-	protected EnumMap<PlanetType, Boolean> colonized = new EnumMap<PlanetType, Boolean>(PlanetType.class);
 	protected String name = null;
 	
 	protected Bank bank = new Bank();
@@ -60,18 +61,41 @@ public abstract class Faction {
 	protected Coordinates pi = null;
 	protected Coordinates[] gf = new Coordinates[3];
 	
+	protected int uniques = 0;
+	protected int gaias = 0;
+	protected EnumMap<PlanetType, Boolean> colonized = new EnumMap<PlanetType, Boolean>(PlanetType.class);
+	
 	protected RoundBooster booster = null;
 	protected TechTile[] techtile = new TechTile[TechTile.values().length];
+	protected Vector<AdvTech> advtech = new Vector<AdvTech>();
 	protected boolean[] coveredtile = new boolean[techtile.length];
 	
-	public boolean placeMine(int col, int row) {
-		Coordinates c = new Coordinates(col, row);
-		return placeMine(c);
+	protected int player;
+	
+	public void init(int player) {
+		this.player = player;
 	}
 	
-	public boolean placeMine(Coordinates c) {
+	public boolean placeMine(int col, int row, PlanetType type) {
+		Coordinates c = new Coordinates(col, row);
+		return placeMine(c, type);
+	}
+	
+	public boolean placeMine(Coordinates c, PlanetType type) {
 		for (int i=0; i < 8; i++) if (mine[i] == null) {
 			mine[i] = c;
+			if (colonized.containsKey(type)) {
+				uniques++;
+				colonized.put(type, true);
+			}
+			if (type == PlanetType.GAIA) {
+				gaias++;
+				int gt = TechTile.GAIA.ordinal();
+				if ((techtile[gt] != null) && (!coveredtile[gt])) {
+					Income[] inc = TechTile.GAIA.income();
+					for (Income income : inc) income(income);
+				}
+			}
 			return true;
 		}
 		return false;
@@ -88,6 +112,7 @@ public abstract class Faction {
 	}
 	
 	public int mines() {
+		// TODO: count lost planet, maybe refactor to track mine count
 		for (int i=0; i < 8; i++)
 			if (mine[i] == null) return i;
 		return 8;
@@ -105,6 +130,12 @@ public abstract class Faction {
 		return 3;
 	}
 	
+	public int pia() {
+		int pia = (pi == null) ? 0 : 1;
+		for (int i=0; i < 2; i++) if (acad[i] != null) pia++;
+		return pia;
+	}
+	
 	public String name() {
 		if (name == null) return this.getClass().getName();
 		return name;
@@ -118,10 +149,11 @@ public abstract class Faction {
 		return starttrack;
 	}
 	
+	/**
+	 * @param techIncome additional income from any tech tracks
+	 * @return an array of possible bowl states or null if there are no choices about power income to be made
+	 */
 	public BowlState[] roundIncome(Vector<Income> techIncome) {
-		// calculates all income and returns an array of possible board states
-		// returns null if there are no choices about power income to be made
-		
 		// add building income
 		techIncome.add(incomeForMines[mines()]);
 		techIncome.add(incomeForTS[ts()]);
@@ -142,6 +174,10 @@ public abstract class Faction {
 			else income(i);
 		
 		return bank.powerIncome(powerIncome);
+	}
+	
+	public void factionAction(Action a) {
+		throw new IllegalStateException("No faction actions defined for " + name);
 	}
 	
 	public Action[] gaiaBowlActions() {
@@ -167,6 +203,39 @@ public abstract class Faction {
 		for (Coordinates c : gf) if ((c != null) && (c.col() >= 0) && (c.row() >= 0))
 				locations.add(c);
 		return locations;
+	}
+	
+	private void scoreEndTurnBonus(EndTurnBonus bonus) {
+		if (bonus == null) return;
+		int vp = 0;
+		switch(bonus) {
+		case MINE: vp = mines(); break;
+		case TS: vp = ts() * 2; break;
+		case LAB: vp = labs() * 3; break;
+		case PIA: vp = pia() * 5; break;
+		case GAIA: vp = gaias; break;
+		case FEDERATION: vp = bank.federations();
+		case UNIQUE: vp = uniques; break;
+		}
+		bank.income(new Income(ResourceType.VP, vp));
+	}
+	
+	public void endTurnBonus(EndTurnBonus booster) {
+		scoreEndTurnBonus(booster);
+		for (AdvTech t : advtech) scoreEndTurnBonus(t.endturn());
+	}
+	
+	public int ore() {
+		return bank.ore();
+	}
+	
+	public int maxBurn() {
+		return bank.maxBurn();
+	}
+	
+	public int spendablePower() {
+		// TODO: override this for nevlas
+		return bank.spendablePower();
 	}
 	
 	public String toString() {

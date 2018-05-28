@@ -16,6 +16,7 @@ public enum PlanetType {
 	NOTHING(' ');
 	
 	private final char abbr;
+	public static final PlanetType[] PLANETCYCLE = new PlanetType[] {WHITE, GREY, BROWN, YELLOW, ORANGE, RED, BLUE};
 	
 	PlanetType(char abbr) {
 		this.abbr = abbr;

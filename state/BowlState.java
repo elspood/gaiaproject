@@ -9,6 +9,8 @@ public class BowlState {
 	private int b3;
 	private int brainstone = 0;
 	
+	public static final int BRAINSTONEVALUE = 3;
+	
 	public BowlState(boolean taklons, int b1, int b2, int b3) {
 		if (taklons) brainstone = 1;
 		init(b1, b2, b3);
@@ -31,6 +33,14 @@ public class BowlState {
 			return 0;
 		}
 		throw new IllegalArgumentException("Illegal power income type: " + i.type());
+	}
+	
+	public int maxBurn() {
+		return (((brainstone == 2) ? 1 : 0) + b2) / 2;
+	}
+	
+	public int spendablePower() {
+		return b3 + ((brainstone == 3) ? BRAINSTONEVALUE : 0);
 	}
 	
 	public void newPower(int amount) {
@@ -98,7 +108,8 @@ public class BowlState {
 	}
 	
 	public BowlState[] bowlStates(Vector<Income> powerIncome) {
-		if (powerIncome.size() == 0) return null;
+		if (powerIncome.size() == 0)
+			throw new IllegalArgumentException("Must have power income to calculate bowl states");
 		Vector<BowlState> states = new Vector<BowlState>();
 		
 		calculatePossibleStates(states, new boolean[powerIncome.size()], powerIncome, this);
@@ -120,6 +131,7 @@ public class BowlState {
 				calculatePossibleStates(states, used, income, newstate);
 				used[i] = false;
 			}
+			i++;
 		}
 		if (done) {
 			if (!states.contains(bowls)) states.add(bowls);
