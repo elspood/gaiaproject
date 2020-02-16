@@ -3,6 +3,7 @@ package state;
 import java.util.Vector;
 import faction.Faction;
 import faction.HadschHallas;
+import faction.Ivits;
 import faction.Taklons;
 import faction.Terran;
 import faction.Xenos;
@@ -183,6 +184,7 @@ public class GameState {
 		currentplayer++;
 		if (currentplayer == this.player.length) {
 			currentplayer = 0;
+			if (this.player[0] instanceof Ivits) currentplayer++;
 			state = State.PLANETDRAFT;
 		}
 		return true;
@@ -192,15 +194,20 @@ public class GameState {
 		int player = a.player();
 		Coordinates c = (Coordinates)a.info();
 
-		// TODO: place PI for ivits instead, only if draft state is -2
 		Faction f = this.player[player];
-		if (!f.placeMine(c, f.homePlanet()))
-			throw new IllegalStateException("No mines left to place for " + playerDisplayName(player));
-		map.build(c, f, Building.MINE);
-		
-		System.out.println(playerDisplayName(player) + " drafted home planet at " + c);
+		if (f instanceof Ivits) {
+			if (draft == -2) {
+				Ivits i = (Ivits)f;
+				i.draftPI(c);
+				System.out.println(playerDisplayName(player) + " drafted a PI on home planet at " + c);
+			} else throw new IllegalStateException("Cannot draft with Ivits yet - other players are not finished drafting");
+		} else {
+			if (!f.placeMine(c, f.homePlanet()))
+				throw new IllegalStateException("No mines left to place for " + playerDisplayName(player));
+			map.build(c, f, Building.MINE);
+			System.out.println(playerDisplayName(player) + " drafted a mine on home planet at " + c);
+		}
 
-		// TODO: make Ivits go last
 		if ((f instanceof Xenos) && (f.mines() == 3)) {
 			currentplayer = -2;
 		} else {
@@ -217,8 +224,11 @@ public class GameState {
 			if (currentplayer == -1) currentplayer = -2;
 		}
 		if (currentplayer == -2) {
-			//TODO: check for ivits in game and play them last if necessary
-			draft = -2;
+			for (int i=0; i < this.player.length; i++) if (this.player[i] instanceof Ivits) {
+				currentplayer = i;
+				draft = -2;
+				break;
+			}
 		}
 		if (currentplayer < 0) {
 			currentplayer = this.player.length - 1;
@@ -379,7 +389,8 @@ public class GameState {
 	}
 	
 	private void transitionState(int player) {
-		// any action phase action should allow free power action choices after completing;
+		// any action phase action should allow free power action choices after completing; that said, we should only allow
+		// 			this after an action that results in power charge, which is either crossing lv3 science or using tech tile special
 		// independently select: convert ore to power, burn power, spend power
 		
 		// TODO: support nevlas free actions (knowledge to gaia bowl, power actions worth 2 maybe)
