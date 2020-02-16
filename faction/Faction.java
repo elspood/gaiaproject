@@ -18,6 +18,10 @@ import state.SpecialAction;
 import state.TechTile;
 
 public abstract class Faction {
+	
+	protected static Faction[] factions = {
+			new HadschHallas(), new Ivits(), new Taklons(), new Terran(), new Xenos()
+	};
 
 	protected PlanetType homeplanet;
 	protected Income[] incomeForMines = {
@@ -74,6 +78,10 @@ public abstract class Faction {
 	
 	public void init(int player) {
 		this.player = player;
+	}
+	
+	public static Faction[] choices() {
+		return factions;
 	}
 	
 	public boolean placeMine(int col, int row, PlanetType type) {

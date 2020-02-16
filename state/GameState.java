@@ -2,10 +2,7 @@ package state;
 
 import java.util.Vector;
 import faction.Faction;
-import faction.HadschHallas;
 import faction.Ivits;
-import faction.Taklons;
-import faction.Terran;
 import faction.Xenos;
 
 public class GameState {
@@ -30,10 +27,6 @@ public class GameState {
 	
 	private Vector<Action> actionlist = new Vector<Action>();
 	
-	private Faction[] factionchoices = {
-			new HadschHallas(), new Taklons(), new Terran(), new Xenos()
-	};
-	
 	public GameState(int players, Map map, RoundScore[] roundscore, FinalScore[] victoryconditions,
 			Vector<RoundBooster> boosters, Research tech) {
 		player = new Faction[players];
@@ -56,6 +49,7 @@ public class GameState {
 	
 	private Action[] factionDraftChoices() {
 		Vector<Action> choices = new Vector<Action>();
+		Faction[] factionchoices = Faction.choices();
 		for (int i=0; i < factionchoices.length; i++) if (factionchoices[i] != null)
 			choices.add(new Action(currentplayer, ActionType.DRAFTFACTION, i, factionchoices[i].name()));
 		return choices.toArray(new Action[choices.size()]);
@@ -149,6 +143,7 @@ public class GameState {
 	private boolean draft(Action a) {
 		int player = a.player();
 		int i = (int)a.info();
+		Faction[] factionchoices = Faction.choices();
 
 		try {
 			if (factionchoices[i] == null)
@@ -199,7 +194,9 @@ public class GameState {
 			if (draft == -2) {
 				Ivits i = (Ivits)f;
 				i.draftPI(c);
+				map.build(c, f, Building.PI);
 				System.out.println(playerDisplayName(player) + " drafted a PI on home planet at " + c);
+				currentplayer = -2;
 			} else throw new IllegalStateException("Cannot draft with Ivits yet - other players are not finished drafting");
 		} else {
 			if (!f.placeMine(c, f.homePlanet()))
@@ -213,6 +210,9 @@ public class GameState {
 		} else {
 			currentplayer += draft;
 		}
+		
+		if ((currentplayer < this.player.length) && (currentplayer >= 0) && (this.player[currentplayer] instanceof Ivits))
+			currentplayer += draft;
 		if (currentplayer == this.player.length) {
 			draft = -1;
 			currentplayer--;
