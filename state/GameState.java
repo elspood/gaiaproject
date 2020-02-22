@@ -1,16 +1,14 @@
 package state;
 
 import java.util.Vector;
-import faction.Faction;
-import faction.Ivits;
-import faction.Xenos;
+
+import action.*;
+import faction.*;
 
 public class GameState {
 
 	private Faction[] player;
-	private int[] turnorder;
-	private int[] passorder = new int[] {-1, -1, -1, -1};
-	private int lastpass = 0;
+	private PlayerOrder playerorder;
 	private Map map;
 	private RoundScore[] roundscore;
 	private FinalScore[] victoryconditions;
@@ -18,44 +16,114 @@ public class GameState {
 	private Vector<RoundBooster> boosters;
 	private Research tech;
 
-	private int currentplayer = 0;
 	private int round = -1;
-	private int draft = 1;
-	private State state = State.FACTIONDRAFT;
+	private State state = null;
+	private State exitstate = null;			// tracks the state to exit to once the current state is done
 	private ActionType lastaction = null;
 	private BowlState[] bowlstates;
 	
+	// TODO: make a harness that replays an entire game from an action log
 	private Vector<Action> actionlist = new Vector<Action>();
 	
+	/*
+	 * initialize from pre-defined board conditions
+	 */
 	public GameState(int players, Map map, RoundScore[] roundscore, FinalScore[] victoryconditions,
-			Vector<RoundBooster> boosters, Research tech) {
+			Vector<RoundBooster> boosters, Research tech, boolean clockwise) {
 		player = new Faction[players];
-		turnorder = new int[players];
-		passorder = new int[players];
+		this.playerorder = new PlayerOrder(clockwise, players);
 		this.finalscore = new int[victoryconditions.length][players];
 		this.map = map;
 		this.roundscore = roundscore;
 		this.victoryconditions = victoryconditions;
 		this.boosters = boosters;
 		this.tech = tech;
+		
+		state = State.FACTIONDRAFT;
+		playerorder.startNormalDraft();
 	}
 	
-	public boolean placeMine(int col, int row, int player) {
+	/*
+	 * choose game options instead of starting from pre-defined board
+	 */
+	public GameState(int players, boolean clockwise) {
+		// TODO: support variable board setup
+		state = State.GAMECONDITIONS;
+	}
+	
+	public Action[] getChoices() {
+		// loop invariant: game state must always be processed until the current state has an active player decision
+		//			basically, the game 'pauses' for a player decision and auto-processes any state where no decision
+		//			is needed (or a player could make a decision, but it's an objectively bad one)
+		
+		// TODO: lost planet is placed and additional leech is decided and taken AFTER any leech is decided from RL or A upgrade
+		
+		switch (state) {
+		case FACTIONDRAFT: return factionDraftChoices();
+		case PLANETDRAFT:
+		case DRAFTXENOS:
+		case DRAFTIVITS:
+			return planetDraftChoices();
+		case CHOOSEBOOSTER: return boosterChoices();
+		case INCOME: return incomeChoices();
+		case ITARSGAIA:
+		case TERRANGAIA:
+		case GAIA:
+			return gaiaChoices();
+		case STARTACTION: return actionChoices();
+		}
+		throw new IllegalStateException("Couldn't determine available actions from state\n" + this.toString());
+	}
+	
+	// TODO: support a different method signature which gives an index into a set of choices for the player
+	//			as a result of the getActionChoices() method, which does NO legality checking, to speed up MCTS
+	//			accepting an arbitrary Action should do all the legality checks in order to validate move histories or to be used on server
+	
+	public void takeAction(Action a) {
+		int p = playerorder.currentPlayer();
+		if (p != a.player())
+			throw new IllegalStateException("Player " + (a.player() + 1) + " can't " + a.type() + " ; it's player " +
+					(p + 1) + "'s turn");
+		ActionType t = a.type();
+		if (!t.validState(state))
+			throw new IllegalStateException("Could not " + t + "; current state is " + state);
+		Object o = a.info();
+		if ((o != null) && !o.getClass().equals(t.expectedParameterClass()))
+			throw new IllegalArgumentException("Expected " + t.expectedParameterClass().getSimpleName() +
+					" argument; received " + a.info().getClass().getName());
+		
+		// TODO: make sure that any forced decisions also get added to the action log
+		actionlist.add(a);
+		switch (t) {
+		case DRAFTFACTION: draftFaction(a); break;
+		case DRAFTPLANET: planetDraft(a); break;
+		case CHOOSEBOOSTER: chooseBooster(a); break;
+		case POWERINCOME:  powerIncome(a); break;
+		case RESOURCETRADE: player[p].factionAction(a); break;
+		case PASS: pass(a); break;
+		default: throw new IllegalArgumentException("No handler specified for action " + a);
+		}
+	}
+	
+	// TODO: switch to using board coordinate system, using coordinate toString for col, row with letter, number
+	private void placeMine(int col, int row, int player) {
 		PlanetType pt = this.player[player].homePlanet();
 		if (pt != map.get(col, row))
 			throw new IllegalArgumentException("Must start on home planet; [" + col + "," + row + "] isn't " + pt);
-		return this.player[player].placeMine(col, row, pt);
+		if (!this.player[player].placeMine(col, row, pt)) 
+			throw new IllegalArgumentException("Couldn't place mine at [" + col + "," + row + "]");
 	}
 	
 	private Action[] factionDraftChoices() {
 		Vector<Action> choices = new Vector<Action>();
 		Faction[] factionchoices = Faction.choices();
 		for (int i=0; i < factionchoices.length; i++) if (factionchoices[i] != null)
-			choices.add(new Action(currentplayer, ActionType.DRAFTFACTION, i, factionchoices[i].name()));
+			choices.add(new Action(playerorder.currentPlayer(), ActionType.DRAFTFACTION, i, factionchoices[i].name()));
 		return choices.toArray(new Action[choices.size()]);
 	}
 	
 	private Action[] planetDraftChoices() {
+		int currentplayer = playerorder.currentPlayer();
 		Coordinates[] available = map.availablePlanets(player[currentplayer].homePlanet());
 		Action[] choices = new Action[available.length];
 		int index = 0;
@@ -67,11 +135,12 @@ public class GameState {
 	private Action[] boosterChoices() {
 		Action[] choices = new Action[boosters.size()];
 		for (int i=0; i < choices.length; i++)
-			choices[i] = new Action(currentplayer, ActionType.CHOOSEBOOSTER, i, boosters.get(i).toString());
+			choices[i] = new Action(playerorder.currentPlayer(), ActionType.CHOOSEBOOSTER, i, boosters.get(i).toString());
 		return choices;
 	}
 	
 	private Action[] incomeChoices() {
+		int currentplayer = playerorder.currentPlayer();
 		System.out.println("Collecting income for " + playerDisplayName(currentplayer));
 		Vector<Income> income = tech.income(currentplayer);
 		bowlstates = player[currentplayer].roundIncome(income);
@@ -83,17 +152,58 @@ public class GameState {
 			return choices;
 		}
 		// if no income choices, call again with next player
-		currentplayer++;
-		if (currentplayer < player.length) return incomeChoices();
+		int next = playerorder.nextPlayer();
+		if (next != -1) return incomeChoices();
 
-		// if no income decisions for any player, move to gaia phase
-		currentplayer = 0;
-		state = State.GAIA;
+		// if no income decisions remain for any player, move to gaia phase
+		setNextGaiaPhaseState();
 		return gaiaChoices();
 	}
 	
+	private void setNextGaiaPhaseState() {
+		if (state == State.INCOME) {
+			state = State.ITARSGAIA;
+			for (int i=0; i < this.player.length; i++) if (this.player[i] instanceof Itars) {
+				playerorder.setNext(i);
+				return;
+			}
+		}
+		if (state == State.ITARSGAIA) {
+			state = State.TERRANGAIA;
+			for (int i=0; i < this.player.length; i++) if (this.player[i] instanceof Terran) {
+				playerorder.setNext(i);
+				return;
+			}
+		}
+		if (state == State.TERRANGAIA) {
+			state = state.GAIA;
+			playerorder.startNormalDraft();
+			return;
+		}
+		throw new IllegalStateException("Cannot set the next Gaia phase state starting from state " + state);
+	}
+	
 	private Action[] gaiaChoices() {
+		// TODO: fix this to leverage two additional gaia states (only ivits or terrans will make decisions during gaia phase)
+		int currentplayer = playerorder.currentPlayer();
 		Faction f = player[currentplayer];
+		
+		if (state == State.ITARSGAIA) {
+			if (!(f instanceof Itars)) throw new IllegalStateException("Only Itars may make decisions during the Itars Gaia phase");
+			Action[] choices = f.gaiaBowlActions();
+			if (choices != null) return choices;
+			setNextGaiaPhaseState();
+			return gaiaChoices();
+		}
+		
+		if (state == State.TERRANGAIA) {
+			if (!(f instanceof Terran)) throw new IllegalStateException("Only Terrans may make decisions during the Terran Gaia phase");
+			Action[] choices = f.gaiaBowlActions();
+			if (choices != null) return choices;
+			setNextGaiaPhaseState();
+			return gaiaChoices();
+		}
+		
 		Vector<Coordinates> gfs = f.gaiaformerLocations();
 		int size = gfs.size();
 		for (int i=0; i < size; i++) {
@@ -103,44 +213,58 @@ public class GameState {
 				System.out.println(playerDisplayName(currentplayer) + " gaiaformed at " + c);
 			}
 		}
-		Action[] ga = f.gaiaBowlActions();
-		if (ga != null) return ga;
+
+		int power = f.emptyGaiaBowl();
+		if (power > 0) System.out.println(playerDisplayName(currentplayer) + " emptied " + power + " power from the Gaia bowl");
 		
-		return completeGaiaPhase(true);
+		if (playerorder.nextPlayer() != -1) return gaiaChoices();
+		
+		completeGaiaPhase();
+		
+		return actionChoices();
 	}
 	
-	private Action[] completeGaiaPhase(boolean returnnext) {
-		System.out.println("Completed gaia phase for " + playerDisplayName(currentplayer));
-		currentplayer++;
-		
-		// if no gaia choices, call again with next player (or wait for next call, depending)
-		if (currentplayer < player.length) {
-			if (returnnext) return gaiaChoices();
-			return null;
-		}
-
-		// if no gaia decisions for last player, move to action phase
-		currentplayer = 0;
-		state = State.ACTIONS;
-		return (returnnext) ? actionChoices() : null;
+	private void completeGaiaPhase() {
+		state = State.STARTACTION;
+		playerorder.startNormalPlay();
 	}
 	
 	private Action[] actionChoices() {
+		// any action phase action should allow free power-related action choices AFTER completing to groom the state of the power bowls;
+		//			that said, we should only allow this after an action that results in power charge, which is either crossing
+		//			lv3 science or using tech tile special OR buying power tokens, which rules in QIC- and ore-earning actions, too
+		// all other FREE actions should not be allowed after a main action because they are without loss of generality able to be done
+		// 			on the following turn, and branching MCTS twice for the same free action post- and pre-turn is super wasteful
+		// to prune further, pre-action free actions should never be done unless in order to enable the action on that turn
+		// OK, scratch all of the above; with BOTH pruning approaches in place, genuinely useful free actions combos are being discarded
+		//			the REAL simplification should be: only do free actions that enable the main action BEFORE the action, then do
+		//			resource-management actions only AFTER the turn (to groom bowl state for leech or keep from overcapping on income)
+		//			EXCEPTION: Nevlas may want to combine action-enabling free actions and resource management actions together (because of odd numbers)
+		//				but this can be solved by just making any ore-purchasing free actions into only ore + credit or 2-ore actions
+		
+		
+		// independently select: convert ore to power, burn power, spend power
+		
+		// TODO: support nevlas free actions (knowledge to gaia bowl, power actions worth 2 maybe)
+		// TODO: support taklons brainstone burn/spend
+		
+		int currentplayer = playerorder.currentPlayer();
 		Vector<Action> choices = new Vector<Action>();
 		
 		
 		// pass options
-		if (round == 5) choices.add(new Action(turnorder[currentplayer], ActionType.PASS, null, "Pass"));
+		// TODO: fix this to decouple the pass action from the booster choice
+		if (round == 5) choices.add(new Action(currentplayer, ActionType.PASS, null, "Pass"));
 		else {
 			for (int i=0; i < 3; i++) {
 				RoundBooster booster = boosters.get(i);
-				choices.add(new Action(turnorder[currentplayer], ActionType.PASS, i, "Pass, take booster " + booster));
+				choices.add(new Action(currentplayer, ActionType.PASS, i, "Pass, take booster " + booster));
 			}
 		}
 		return choices.toArray(new Action[choices.size()]);
 	}
 	
-	private boolean draft(Action a) {
+	private void draftFaction(Action a) {
 		int player = a.player();
 		int i = (int)a.info();
 		Faction[] factionchoices = Faction.choices();
@@ -176,68 +300,75 @@ public class GameState {
 			}
 		}
 		
-		currentplayer++;
-		if (currentplayer == this.player.length) {
-			currentplayer = 0;
-			if (this.player[0] instanceof Ivits) currentplayer++;
-			state = State.PLANETDRAFT;
-		}
-		return true;
+		int next = playerorder.nextPlayer();
+		if (next == -1) startPlanetDraft();
 	}
 	
-	private boolean planetDraft(Action a) {
+	private void startPlanetDraft() {
+		state = State.PLANETDRAFT;
+		playerorder.startSnakeDraft();
+		int player = playerorder.currentPlayer();
+		// ivits don't draft during initial draft phase
+		if (this.player[player] instanceof Ivits) playerorder.nextPlayer();
+	}
+	
+	private void planetDraft(Action a) {
 		int player = a.player();
 		Coordinates c = (Coordinates)a.info();
 
 		Faction f = this.player[player];
 		if (f instanceof Ivits) {
-			if (draft == -2) {
-				Ivits i = (Ivits)f;
-				i.draftPI(c);
-				map.build(c, f, Building.PI);
-				System.out.println(playerDisplayName(player) + " drafted a PI on home planet at " + c);
-				currentplayer = -2;
-			} else throw new IllegalStateException("Cannot draft with Ivits yet - other players are not finished drafting");
-		} else {
-			if (!f.placeMine(c, f.homePlanet()))
-				throw new IllegalStateException("No mines left to place for " + playerDisplayName(player));
-			map.build(c, f, Building.MINE);
-			System.out.println(playerDisplayName(player) + " drafted a mine on home planet at " + c);
-		}
-
-		if ((f instanceof Xenos) && (f.mines() == 3)) {
-			currentplayer = -2;
-		} else {
-			currentplayer += draft;
+			if (state != State.DRAFTIVITS) throw new IllegalStateException("Cannot draft with Ivits yet - other players are not finished drafting");
+			((Ivits)f).draftPI(c);
+			map.build(c, f, Building.PI);
+			System.out.println(playerDisplayName(player) + " drafted a PI on home planet at " + c);
+			startBoosterDraft();
+			return;
 		}
 		
-		if ((currentplayer < this.player.length) && (currentplayer >= 0) && (this.player[currentplayer] instanceof Ivits))
-			currentplayer += draft;
-		if (currentplayer == this.player.length) {
-			draft = -1;
-			currentplayer--;
-		} else if (currentplayer == -1) {
-			for (int i=0; i < this.player.length; i++) if (this.player[i] instanceof Xenos) {
-				currentplayer = i;
-				break;
-			}
-			if (currentplayer == -1) currentplayer = -2;
+		if (!f.placeMine(c, f.homePlanet()))
+			throw new IllegalStateException("No mines left to place for " + playerDisplayName(player));
+		map.build(c, f, Building.MINE);
+		System.out.println(playerDisplayName(player) + " drafted a mine on home planet at " + c);
+		
+		if (state == State.DRAFTXENOS) {
+			setNextPlanetDraftState();
+			return;
 		}
-		if (currentplayer == -2) {
-			for (int i=0; i < this.player.length; i++) if (this.player[i] instanceof Ivits) {
-				currentplayer = i;
-				draft = -2;
-				break;
-			}
-		}
-		if (currentplayer < 0) {
-			currentplayer = this.player.length - 1;
-			state = State.BOOSTDRAFT;
-		}
-		return true;
+		
+		int next = playerorder.nextPlayer();
+		if (this.player[next] instanceof Ivits) next = playerorder.nextPlayer();
+		if (playerorder.nextPlayer() == -1) setNextPlanetDraftState();
+		
 	}
 	
-	private boolean chooseBooster(Action a) {
+	private void setNextPlanetDraftState() {
+		if (state == State.PLANETDRAFT) {
+			state = State.DRAFTXENOS;
+			for (int i=0; i < this.player.length; i++) if (this.player[i] instanceof Xenos) {
+				playerorder.setNext(i);
+				return;
+			}
+		}
+		if (state == State.DRAFTXENOS) {
+			for (int i=0; i < this.player.length; i++) if (this.player[i] instanceof Ivits) {
+				state = State.DRAFTIVITS;
+				playerorder.setNext(i);
+				return;
+			}
+			startBoosterDraft();
+			return;
+		}
+		throw new IllegalStateException("Cannot set the next planet draft state when the current state is " + state);
+	}
+	
+	private void startBoosterDraft() {
+		state = State.CHOOSEBOOSTER;
+		exitstate = State.INCOME;
+		playerorder.startReverseDraft();
+	}
+	
+	private void chooseBooster(Action a) {
 		int player = a.player();
 		int i = (int)a.info();
 
@@ -246,20 +377,30 @@ public class GameState {
 		
 		Faction f = this.player[player];
 		RoundBooster b = boosters.remove(i);
-		f.swapBooster(b);
+		RoundBooster old = f.swapBooster(b);
 		
-		System.out.println(playerDisplayName(player) + " drafted " + b);
+		if (old == null) System.out.println(playerDisplayName(player) + " drafted " + b);
+		else System.out.println(playerDisplayName(player) + " exchanged " + old + " for " + b);
 		
-		currentplayer--;
-		if (currentplayer == -1) {
-			currentplayer = 0;
-			round = 0;
-			state = State.INCOME;
+		if (exitstate == State.INCOME) {
+			// this should only happen at the end of pre-game booster drafting
+			if (playerorder.nextPlayer() == -1) startRound();
+			return;
+		} else {
+			// after picking a booster when passing, proceed to end-turn free actions
+			// (booster selection won't happen on round 6, so no need to check for endgame here)
+			state = State.ENDTURN;
 		}
-		return true;
 	}
 	
-	private boolean powerIncome(Action a) {
+	private void startRound() {
+		// TODO: this probably generalizes to all rounds, but confirm how it's used
+		round++;
+		state = State.INCOME;
+		playerorder.startNormalDraft();
+	}
+	
+	private void powerIncome(Action a) {
 		int player = a.player();
 		int i = (int)a.info();
 
@@ -270,16 +411,16 @@ public class GameState {
 		f.setPower(bowlstates[i]);
 		
 		System.out.println(playerDisplayName(player) + " charged power to: " + bowlstates[i]);
-		
-		currentplayer++;
-		if (currentplayer == this.player.length) {
-			currentplayer = 0;
-			state = State.GAIA;
-		}
-		return true;
+
+		int next = playerorder.nextPlayer();
+		if (next != -1) return;
+
+		// if no income decisions remain for any player, move to gaia phase
+		setNextGaiaPhaseState();
 	}
 	
-	private boolean pass(Action a) {
+	private void pass(Action a) {
+		// TODO: decouple the pass action from the round booster choice
 		int player = a.player();
 		
 		RoundBooster next = null;
@@ -304,26 +445,7 @@ public class GameState {
 		// maaaaaaaaaybe an edge case where science or ore should be converted to cash instead of being lost
 		// can do math on it to see if it would happen
 		
-		passorder[lastpass] = player;
-		return false;
-	}
-	
-	private Action[] orePowerChoices() {
-		int p = turnorder[currentplayer];
-		int ore = player[p].ore();
-		Action[] action = new Action[ore+1];
-		for (int i=0; i <= ore; i++)
-			action[i] = new Action(p, ActionType.FREEOREPOWER, i, (i == 0) ? "Skip" : "Convert " + i + " ore to power");
-		return action;
-	}
-	
-	private Action[] burnPowerChoices() {
-		int p = turnorder[currentplayer];
-		int b2 = player[p].maxBurn();
-		Action[] action = new Action[b2+1];
-		for (int i=0; i <= b2; i++)
-			action[i] = new Action(p, ActionType.FREEBURNPOWER, i, (i == 0) ? "Skip" : "Burn " + i + " power");
-		return action;
+		// TODO: update pass order
 	}
 	
 	/**
@@ -333,92 +455,10 @@ public class GameState {
 	 * other free actions unless they're in direct service of a useful action
 	 */
 	private Action[] freeFinalActionChoices() {
-		// TODO: override this for nevlas?
-		int p = turnorder[currentplayer];
+		// TODO: start by offering to convert things at the top of the conversion chain, down to the bottom
+		int p = playerorder.currentPlayer();
 		int b3 = player[p].spendablePower();
 		return ResourceConversion.actionOptions(p, b3, true);
-	}
-	
-	public Action[] getActionChoices() {
-		switch (state) {
-		case FACTIONDRAFT: return factionDraftChoices();
-		case PLANETDRAFT: return planetDraftChoices();
-		case BOOSTDRAFT: return boosterChoices();
-		case INCOME: return incomeChoices();
-		case ACTIONS: return actionChoices();
-		case FREEOREPOWER: return orePowerChoices();
-		case FREEBURNPOWER: return burnPowerChoices();
-		case FREEFINALACTION: return freeFinalActionChoices();
-		}
-		throw new IllegalStateException("Couldn't determine available actions from state\n" + this.toString());
-	}
-	
-	public void takeAction(Action a) {
-		// TODO: confirm other actions don't rely on turnorder instead of player order
-		int p = (state == State.ACTIONS) ? turnorder[currentplayer] : currentplayer;
-		if (p != a.player())
-			throw new IllegalStateException("Player " + (a.player() + 1) + " can't " + a.type() + " ; it's player " +
-					(p + 1) + "'s turn");
-		ActionType t = a.type();
-		State s = t.validState();
-		if ((state != s) && (s != null))
-			throw new IllegalStateException("Could not " + t + "; current state is " + state);
-		Object o = a.info();
-		if ((o != null) && !o.getClass().equals(t.expectedParameterClass()))
-			throw new IllegalArgumentException("Expected " + t.expectedParameterClass().getSimpleName() +
-					" argument; received " + a.info().getClass().getName());
-		
-		actionlist.add(a);
-		boolean stateupdated = false;
-		switch (t) {
-		case DRAFTFACTION: stateupdated = draft(a); break;
-		case DRAFTPLANET: stateupdated = planetDraft(a); break;
-		case CHOOSEBOOSTER: stateupdated = chooseBooster(a); break;
-		case POWERINCOME: stateupdated = powerIncome(a); break;
-		case RESOURCETRADE:
-			player[currentplayer].factionAction(a);
-			completeGaiaPhase(false);
-			stateupdated = true;
-			break;
-		case PASS: stateupdated = pass(a); break;
-		default: throw new IllegalArgumentException("No handler specified for action " + a);
-		}
-		if (stateupdated) return;
-		lastaction = t;
-		transitionState(p);
-	}
-	
-	private void transitionState(int player) {
-		// any action phase action should allow free power action choices after completing; that said, we should only allow
-		// 			this after an action that results in power charge, which is either crossing lv3 science or using tech tile special
-		// independently select: convert ore to power, burn power, spend power
-		
-		// TODO: support nevlas free actions (knowledge to gaia bowl, power actions worth 2 maybe)
-		// TODO: support taklons brainstone burn/spend
-		if (state == State.ACTIONS) {
-			// TODO: if last round, don't take certain free actions after passing (maximize use of resources)
-			// done: using ore for power
-			state = State.FREEOREPOWER;
-			if ((this.player[player].ore() == 0) || ((round == 5) && (lastaction == ActionType.PASS)))
-				transitionState(player);
-		} else if (state == State.FREEOREPOWER) {
-			state = State.FREEBURNPOWER;
-			if (this.player[player].maxBurn() == 0) transitionState(player);
-		} else if (state == State.FREEBURNPOWER) {
-			state = State.FREEFINALACTION;
-			if (this.player[player].spendablePower() == 0) transitionState(player);
-		} else if (state == State.FREEFINALACTION) {
-			state = State.ACTIONS;
-			if (lastaction == ActionType.PASS)
-				turnorder[currentplayer] = -1;
-			for (int i=1; i < turnorder.length; i++) {
-				currentplayer++;
-				if (currentplayer == turnorder.length) currentplayer = 0;
-				if (turnorder[currentplayer] != -1) return;
-			}
-			// everyone has passed
-			state = State.CLEANUP;
-		} else throw new IllegalStateException("Tried to transition unknown state " + state);
 	}
 	
 	public String playerDisplayName(int player) {

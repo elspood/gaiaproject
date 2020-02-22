@@ -1,5 +1,8 @@
 package state;
 
+import action.Action;
+import action.ActionType;
+
 public class ResourceConversion {
 
 	private static final int MAXTRADE = 30;			// extreme edge case of gaiaforming once at every research step

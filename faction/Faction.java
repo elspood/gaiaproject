@@ -3,7 +3,7 @@ package faction;
 import java.util.EnumMap;
 import java.util.Vector;
 
-import state.Action;
+import action.Action;
 import state.AdvTech;
 import state.Bank;
 import state.BowlState;
@@ -189,9 +189,7 @@ public abstract class Faction {
 	}
 	
 	public Action[] gaiaBowlActions() {
-		int power = bank.emptyGaiaBowl();
-		if (power > 0)
-			income(new Income(ResourceType.POWER, power));
+		// most factions have no action decisions in Gaia phase
 		return null;
 	}
 	
@@ -211,6 +209,17 @@ public abstract class Faction {
 		for (Coordinates c : gf) if ((c != null) && (c.col() >= 0) && (c.row() >= 0))
 				locations.add(c);
 		return locations;
+	}
+	
+	protected void restoreGaiaPower(int power) {
+		Income i = new Income(ResourceType.POWER, power);
+		income(i);
+	}
+	
+	public int emptyGaiaBowl() {
+		int power = bank.emptyGaiaBowl();
+		if (power > 0) restoreGaiaPower(power);
+		return power;
 	}
 	
 	private void scoreEndTurnBonus(EndTurnBonus bonus) {

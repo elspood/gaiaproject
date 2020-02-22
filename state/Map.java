@@ -9,80 +9,80 @@ public class Map {
 	public static final int HEIGHT = 13;
 	
 	public static final PlanetType[][] F1 = {
-			{null, PlanetType.SPACE, PlanetType.YELLOW, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.BROWN, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.RED},
-			{PlanetType.SPACE, PlanetType.BLUE, PlanetType.SPACE, PlanetType.ORANGE},
+			{null, PlanetType.SPACE, PlanetType.DESERT, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.SWAMP, PlanetType.SPACE, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.OXIDE},
+			{PlanetType.SPACE, PlanetType.TERRA, PlanetType.SPACE, PlanetType.VOLCANIC},
 			{null, PlanetType.SPACE, PlanetType.TRANSDIM, PlanetType.SPACE},
 	};
 	
 	public static final PlanetType[][] F2 = {
 			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.ORANGE, PlanetType.SPACE, PlanetType.BROWN, PlanetType.RED},
-			{PlanetType.GREY, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.WHITE, PlanetType.SPACE, PlanetType.TRANSDIM},
-			{null, PlanetType.SPACE, PlanetType.YELLOW, PlanetType.SPACE},
+			{PlanetType.VOLCANIC, PlanetType.SPACE, PlanetType.SWAMP, PlanetType.OXIDE},
+			{PlanetType.TITANIUM, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.ICE, PlanetType.SPACE, PlanetType.TRANSDIM},
+			{null, PlanetType.SPACE, PlanetType.DESERT, PlanetType.SPACE},
 	};
 	
 	public static final PlanetType[][] F3 = {
 			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE, PlanetType.BLUE},
-			{PlanetType.TRANSDIM, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.YELLOW},
-			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.WHITE, PlanetType.SPACE},
-			{null, PlanetType.SPACE, PlanetType.GREY, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE, PlanetType.TERRA},
+			{PlanetType.TRANSDIM, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.DESERT},
+			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.ICE, PlanetType.SPACE},
+			{null, PlanetType.SPACE, PlanetType.TITANIUM, PlanetType.SPACE},
 	};
 	
 	public static final PlanetType[][] F4 = {
-			{null, PlanetType.SPACE, PlanetType.WHITE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.ORANGE, PlanetType.SPACE},
-			{PlanetType.GREY, PlanetType.RED, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.BROWN, PlanetType.SPACE},
-			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.BLUE},
+			{null, PlanetType.SPACE, PlanetType.ICE, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.VOLCANIC, PlanetType.SPACE},
+			{PlanetType.TITANIUM, PlanetType.OXIDE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.SWAMP, PlanetType.SPACE},
+			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.TERRA},
 	};
 	
 	public static final PlanetType[][] F5 = {
 			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE, PlanetType.ORANGE},
-			{PlanetType.WHITE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.YELLOW},
+			{PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE, PlanetType.VOLCANIC},
+			{PlanetType.ICE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.DESERT},
 			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{null, PlanetType.TRANSDIM, PlanetType.RED, PlanetType.SPACE},
+			{null, PlanetType.TRANSDIM, PlanetType.OXIDE, PlanetType.SPACE},
 	};
 	
 	public static final PlanetType[][] F6 = {
 			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.BROWN, PlanetType.SPACE, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.SWAMP, PlanetType.SPACE, PlanetType.SPACE},
 			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE},
-			{PlanetType.TRANSDIM, PlanetType.BLUE, PlanetType.SPACE, PlanetType.TRANSDIM},
-			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.YELLOW},
+			{PlanetType.TRANSDIM, PlanetType.TERRA, PlanetType.SPACE, PlanetType.TRANSDIM},
+			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.DESERT},
 	};
 	
 	public static final PlanetType[][] F7 = {
 			{null, PlanetType.TRANSDIM, PlanetType.SPACE, PlanetType.SPACE},
 			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.RED, PlanetType.SPACE, PlanetType.SPACE, PlanetType.GREY},
-			{PlanetType.BROWN, PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.OXIDE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.TITANIUM},
+			{PlanetType.SWAMP, PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE},
 			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
 	};
 	
 	public static final PlanetType[][] F8 = {
 			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.ORANGE, PlanetType.TRANSDIM},
-			{PlanetType.BLUE, PlanetType.WHITE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
-			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.GREY, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.VOLCANIC, PlanetType.TRANSDIM},
+			{PlanetType.TERRA, PlanetType.ICE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
+			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.TITANIUM, PlanetType.SPACE},
 			{null, PlanetType.TRANSDIM, PlanetType.SPACE, PlanetType.SPACE},
 	};
 	
 	public static final PlanetType[][] F9 = {
-			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.BROWN},
-			{PlanetType.ORANGE, PlanetType.SPACE, PlanetType.GREY, PlanetType.SPACE},
+			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SWAMP},
+			{PlanetType.VOLCANIC, PlanetType.SPACE, PlanetType.TITANIUM, PlanetType.SPACE},
 			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
 			{PlanetType.TRANSDIM, PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE},
-			{null, PlanetType.WHITE, PlanetType.SPACE, PlanetType.SPACE},
+			{null, PlanetType.ICE, PlanetType.SPACE, PlanetType.SPACE},
 	};
 	
 	public static final PlanetType[][] F10 = {
-			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.BLUE},
-			{PlanetType.SPACE, PlanetType.YELLOW, PlanetType.SPACE, PlanetType.RED},
+			{null, PlanetType.SPACE, PlanetType.SPACE, PlanetType.TERRA},
+			{PlanetType.SPACE, PlanetType.DESERT, PlanetType.SPACE, PlanetType.OXIDE},
 			{PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE, PlanetType.SPACE},
 			{PlanetType.TRANSDIM, PlanetType.SPACE, PlanetType.GAIA, PlanetType.SPACE},
 			{null, PlanetType.TRANSDIM, PlanetType.SPACE, PlanetType.SPACE},

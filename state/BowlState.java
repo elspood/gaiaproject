@@ -45,11 +45,7 @@ public class BowlState {
 	
 	public void newPower(int amount) {
 		if (amount < 1) throw new IllegalArgumentException("New power must be a positive integer");
-		// if the brainstone was burned, it returns when gaining new power
-		if (brainstone == -1) {
-			brainstone = 1;
-			amount--;
-		}
+		// if the brainstone was burned, it IS LOST FOREVER
 		b1 += amount;
 	}
 

@@ -16,7 +16,7 @@ public class HadschHallas extends Faction {
 	};
 	
 	public HadschHallas() {
-		homeplanet = PlanetType.RED;
+		homeplanet = PlanetType.OXIDE;
 		starttrack = ScienceTrack.ECON;
 		incomeForTS = HHincomeForTS;
 		name = "Hadsch Hallas";

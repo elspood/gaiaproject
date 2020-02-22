@@ -2,13 +2,13 @@ package state;
 
 public enum PlanetType {
 	
-	WHITE('w'),
-	GREY('g'),
-	BROWN('b'),
-	YELLOW('y'),
-	ORANGE('o'),
-	RED('r'),
-	BLUE('u'),
+	ICE('w'),
+	TITANIUM('g'),
+	SWAMP('b'),
+	DESERT('y'),
+	VOLCANIC('o'),
+	OXIDE('r'),
+	TERRA('u'),
 	GAIA('*'),
 	TRANSDIM('+'),
 	LOST('?'),
@@ -16,7 +16,7 @@ public enum PlanetType {
 	NOTHING(' ');
 	
 	private final char abbr;
-	public static final PlanetType[] PLANETCYCLE = new PlanetType[] {WHITE, GREY, BROWN, YELLOW, ORANGE, RED, BLUE};
+	public static final PlanetType[] PLANETCYCLE = new PlanetType[] {ICE, TITANIUM, SWAMP, DESERT, VOLCANIC, OXIDE, TERRA};
 	
 	PlanetType(char abbr) {
 		this.abbr = abbr;

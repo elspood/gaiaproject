@@ -13,7 +13,7 @@ public class Xenos extends Faction {
 	};
 	
 	public Xenos() {
-		homeplanet = PlanetType.YELLOW;
+		homeplanet = PlanetType.DESERT;
 		starttrack = ScienceTrack.AI;
 		incomeForPI = PIINCOME;
 		name = "Xenos";

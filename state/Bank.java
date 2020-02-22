@@ -86,6 +86,10 @@ public class Bank {
 		return ore;
 	}
 	
+	public int gaiabowl() {
+		return gaiabowl;
+	}
+	
 	public int maxBurn() {
 		return bowls.maxBurn();
 	}

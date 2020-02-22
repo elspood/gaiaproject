@@ -5,13 +5,12 @@ import java.util.Random;
 import java.util.Scanner;
 import java.util.Vector;
 
-import faction.Faction;
+import action.Action;
+import action.ActionType;
 import faction.HadschHallas;
 import faction.Taklons;
 import faction.Terran;
 import faction.Xenos;
-import state.Action;
-import state.ActionType;
 import state.FinalScore;
 import state.GameState;
 import state.Map;
@@ -49,6 +48,7 @@ public class GaiaProject {
 			}
 		}
 		
+		// TODO: move randomization into game state code
 		Map map = new Map();
 		RoundScore[] rs = RoundScore.randomize(seed);
 		FinalScore[] fs = FinalScore.randomize(seed);
@@ -62,11 +62,11 @@ public class GaiaProject {
 		XENOS:			J2, N8, Q5
 		*/
 		
-		GameState state = new GameState(4, map, rs, fs, boosters, tech);
+		GameState state = new GameState(4, map, rs, fs, boosters, tech, false);
 
 		Action[] choices;
 		Scanner in = new Scanner(System.in);
-		while ((choices = state.getActionChoices()) != null) {
+		while ((choices = state.getChoices()) != null) {
 			System.out.println(state);
 			ActionType type = null;
 			int length = 0;
