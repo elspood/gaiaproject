@@ -1,8 +1,6 @@
 package faction;
 
 import state.PlanetType;
-import state.Bank;
-import state.BowlState;
 
 public class Taklons extends Faction {
 

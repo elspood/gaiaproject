@@ -1,6 +1,9 @@
-package state;
+package faction;
 
 import java.util.Vector;
+
+import state.Income;
+import state.ResourceType;
 
 public class BowlState {
 
@@ -35,8 +38,13 @@ public class BowlState {
 		throw new IllegalArgumentException("Illegal power income type: " + i.type());
 	}
 	
-	public int maxBurn() {
-		return (((brainstone == 2) ? 1 : 0) + b2) / 2;
+	/*
+	 * returns the maximum new power that could be charged into bowl 3 by burning bowl 2 power
+	 */
+	public int maxBurnIncome() {
+		if (b2 < 2) return 0;
+		if (brainstone == 2) return (b2 + 1) / 2 + 2;
+		return b2 / 2;
 	}
 	
 	public int spendablePower() {

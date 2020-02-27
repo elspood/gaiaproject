@@ -2,6 +2,8 @@ package state;
 import java.util.Random;
 import java.util.Vector;
 
+import action.SpecialAction;
+
 public enum RoundBooster {
 	
 	KNOWORE(new Income[] {new Income(ResourceType.ORE, 1), new Income(ResourceType.KNOWLEDGE, 1)}, null, null),

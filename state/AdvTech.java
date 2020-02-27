@@ -1,5 +1,7 @@
 package state;
 
+import action.SpecialAction;
+
 public enum AdvTech {
 	
 	FEDTURN(null, EndTurnBonus.FEDERATION, null, null),

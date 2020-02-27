@@ -1,6 +1,9 @@
-package state;
+package faction;
 
 import java.util.Vector;
+
+import state.FederationToken;
+import state.Income;
 
 public class Bank {
 	
@@ -18,6 +21,7 @@ public class Bank {
 	
 	int federations = 0;
 	private FederationToken[] feds = new FederationToken[10];
+	int unusedfeds = 0;
 	private boolean[] fedused = new boolean[10];
 	
 	public Bank() {
@@ -40,6 +44,7 @@ public class Bank {
 		FederationToken fed = FederationToken.values()[id];
 		feds[federations] = fed;
 		fedused[federations] = !fed.spendable();
+		if (!fedused[federations]) unusedfeds++;
 		for (Income inc : fed.income()) income(inc);
 		federations++;
 	}
@@ -82,20 +87,37 @@ public class Bank {
 		}
 	}
 	
+	public int credits() {
+		return credits;
+	}
+	
 	public int ore() {
 		return ore;
+	}
+	
+	public int qic() {
+		return qic;
+	}
+	
+	public int knowledge() {
+		return knowledge;
 	}
 	
 	public int gaiabowl() {
 		return gaiabowl;
 	}
 	
-	public int maxBurn() {
-		return bowls.maxBurn();
+	public int maxBurnIncome() {
+		return bowls.maxBurnIncome();
 	}
 	
 	public int spendablePower() {
 		return bowls.spendablePower();
+	}
+	
+	public int unusedFederations() {
+		// TODO: make sure used federation tile tracker is kept current
+		return unusedfeds;
 	}
 	
 	public String toString() {

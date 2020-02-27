@@ -14,7 +14,8 @@ public class GameState {
 	private FinalScore[] victoryconditions;
 	private int[][] finalscore;
 	private Vector<RoundBooster> boosters;
-	private Research tech;
+	private Research research;
+	private PowerQICShop shop = new PowerQICShop();
 
 	private int round = -1;
 	private State state = null;
@@ -29,7 +30,7 @@ public class GameState {
 	 * initialize from pre-defined board conditions
 	 */
 	public GameState(int players, Map map, RoundScore[] roundscore, FinalScore[] victoryconditions,
-			Vector<RoundBooster> boosters, Research tech, boolean clockwise) {
+			Vector<RoundBooster> boosters, Research research, boolean clockwise) {
 		player = new Faction[players];
 		this.playerorder = new PlayerOrder(clockwise, players);
 		this.finalscore = new int[victoryconditions.length][players];
@@ -37,7 +38,7 @@ public class GameState {
 		this.roundscore = roundscore;
 		this.victoryconditions = victoryconditions;
 		this.boosters = boosters;
-		this.tech = tech;
+		this.research = research;
 		
 		state = State.FACTIONDRAFT;
 		playerorder.startNormalDraft();
@@ -142,7 +143,7 @@ public class GameState {
 	private Action[] incomeChoices() {
 		int currentplayer = playerorder.currentPlayer();
 		System.out.println("Collecting income for " + playerDisplayName(currentplayer));
-		Vector<Income> income = tech.income(currentplayer);
+		Vector<Income> income = research.income(currentplayer);
 		bowlstates = player[currentplayer].roundIncome(income);
 		if (bowlstates != null) {
 			Action[] choices = new Action[bowlstates.length];
@@ -184,7 +185,6 @@ public class GameState {
 	}
 	
 	private Action[] gaiaChoices() {
-		// TODO: fix this to leverage two additional gaia states (only ivits or terrans will make decisions during gaia phase)
 		int currentplayer = playerorder.currentPlayer();
 		Faction f = player[currentplayer];
 		
@@ -249,19 +249,44 @@ public class GameState {
 		// TODO: support taklons brainstone burn/spend
 		
 		int currentplayer = playerorder.currentPlayer();
+		Faction f = this.player[currentplayer];
 		Vector<Action> choices = new Vector<Action>();
 		
+		// 1. build a mine
 		
-		// pass options
-		// TODO: fix this to decouple the pass action from the booster choice
-		if (round == 5) choices.add(new Action(currentplayer, ActionType.PASS, null, "Pass"));
-		else {
-			for (int i=0; i < 3; i++) {
-				RoundBooster booster = boosters.get(i);
-				choices.add(new Action(currentplayer, ActionType.PASS, i, "Pass, take booster " + booster));
-			}
-		}
+		// 2. gaiaform
+		
+		// 3. upgrade
+		
+		// 4. federate
+		
+		// 5. research
+		choices.addAll(f.researchActions(research.canResearch(currentplayer)));
+		
+		// 6. power/QIC actions
+		choices.addAll(powerQICchoices(currentplayer, f));
+		
+		// 7. special actions
+		choices.addAll(f.specialActions());
+		
+		// 8. pass
+		choices.add(new Action(currentplayer, ActionType.PASS, null, "Pass"));
+		
 		return choices.toArray(new Action[choices.size()]);
+	}
+	
+	private Vector<Action> powerQICchoices(int player, Faction currentfaction) {
+		Vector<Action> choices = new Vector<Action>();
+		
+		int power = currentfaction.maxBowl3Spend();
+		if (shop.powerShopAvailableFor(power)) choices.add(new Action(player, ActionType.POWERSHOP, null, "Buy resources from power shop"));
+		
+		// Dig actions are available to purchase using the 'build a mine' action 
+		
+		int qic = currentfaction.qic();
+		if (shop.qicShopAvailableFor(qic)) choices.add(new Action(player, ActionType.QICSHOP, null, "Buy from QIC shop"));
+		
+		return choices;
 	}
 	
 	private void draftFaction(Action a) {
@@ -292,7 +317,7 @@ public class GameState {
 		
 		ScienceTrack start = f.startTrack();
 		if (start != null) {
-			Vector<Income> income = tech.progress(player, start);
+			Vector<Income> income = research.progress(player, start);
 			System.out.println(playerDisplayName(player) + " starts up " + start + " track");
 			for (Income inc : income) {
 				System.out.println(playerDisplayName(player) + " receives " + inc);
@@ -420,32 +445,14 @@ public class GameState {
 	}
 	
 	private void pass(Action a) {
-		// TODO: decouple the pass action from the round booster choice
-		int player = a.player();
-		
-		RoundBooster next = null;
-		Object o = a.info();
-		if (o != null) {
-			int i = 0;
-			if (o instanceof Integer) i = (int)o;
-			else throw new IllegalArgumentException("Expected integer argument; received "
-				 + a.info().getClass().getName());
-			if ((i < 0) || (i > 2))
-				throw new IllegalArgumentException("Invalid booster choice: " + i);
-			next = boosters.remove(i);
+		// TODO: collect bonuses for passing
+		playerorder.pass();
+		if (round == 5) {
+			state = State.ENDTURN;
+		} else {
+			state = State.CHOOSEBOOSTER;
+			exitstate = State.ENDTURN;
 		}
-		RoundBooster current = this.player[player].swapBooster(next);
-		boosters.add(current);
-		
-		EndTurnBonus b = current.bonus();
-		this.player[player].endTurnBonus(b);
-		
-		// TODO: trade in unused gaiaformers for ballsacks first
-		// TODO: downconvert resources if cap will be reached during income phase (hadsch hallas, mostly)
-		// maaaaaaaaaybe an edge case where science or ore should be converted to cash instead of being lost
-		// can do math on it to see if it would happen
-		
-		// TODO: update pass order
 	}
 	
 	/**
@@ -456,6 +463,10 @@ public class GameState {
 	 */
 	private Action[] freeFinalActionChoices() {
 		// TODO: start by offering to convert things at the top of the conversion chain, down to the bottom
+		// TODO: trade in unused gaiaformers for ballsacks first
+		// TODO: downconvert resources if cap will be reached during income phase (hadsch hallas, mostly)
+		// maaaaaaaaaybe an edge case where science or ore should be converted to cash instead of being lost
+		// can do math on it to see if it would happen
 		int p = playerorder.currentPlayer();
 		int b3 = player[p].spendablePower();
 		return ResourceConversion.actionOptions(p, b3, true);
@@ -482,7 +493,7 @@ public class GameState {
 		sb.append("]\nBoosters: ");
 		for (RoundBooster b : boosters) sb.append(b + " ");
 		sb.append("\n");
-		sb.append(tech);
+		sb.append(research);
 		for (int i=0; i < player.length; i++) if (player[i] != null) sb.append(player[i]);
 		return sb.toString();
 	}

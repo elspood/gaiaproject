@@ -4,17 +4,18 @@ import java.util.EnumMap;
 import java.util.Vector;
 
 import action.Action;
+import action.ActionType;
+import action.SpecialAction;
 import state.AdvTech;
-import state.Bank;
-import state.BowlState;
+import state.CanResearch;
 import state.Coordinates;
 import state.EndTurnBonus;
 import state.Income;
 import state.PlanetType;
+import state.ResourceConversion;
 import state.ResourceType;
 import state.RoundBooster;
 import state.ScienceTrack;
-import state.SpecialAction;
 import state.TechTile;
 
 public abstract class Faction {
@@ -52,8 +53,11 @@ public abstract class Faction {
 			new Income(ResourceType.CHARGE, 4),
 			new Income(ResourceType.POWER, 1),
 	};
-	protected Income incomeForAcademy = new Income(ResourceType.KNOWLEDGE, 2);
-	protected SpecialAction actionForAcademy = SpecialAction.QIC;
+	protected Income incomeforacademy = new Income(ResourceType.KNOWLEDGE, 2);
+	protected SpecialAction specialactionforacademy = SpecialAction.QIC;
+	protected SpecialAction specialactionforpi = null;		// special action only unlocked by PI
+	protected SpecialAction specialactionforfaction = null;	// faction action always available
+	protected SpecialActionDeck specialactions;
 	protected ScienceTrack starttrack = null;
 	protected String name = null;
 	
@@ -78,6 +82,7 @@ public abstract class Faction {
 	
 	public void init(int player) {
 		this.player = player;
+		specialactions = new SpecialActionDeck(player, specialactionforacademy, specialactionforpi, specialactionforfaction);
 	}
 	
 	public static Faction[] choices() {
@@ -166,7 +171,7 @@ public abstract class Faction {
 		techIncome.add(incomeForMines[mines()]);
 		techIncome.add(incomeForTS[ts()]);
 		techIncome.add(incomeForLabs[labs()]);
-		if (acad[0] != null) techIncome.add(incomeForAcademy);
+		if (acad[0] != null) techIncome.add(incomeforacademy);
 		if (pi != null) for (Income i : incomeForPI) techIncome.add(i);
 		
 		// add booster and tech tile income
@@ -186,6 +191,68 @@ public abstract class Faction {
 	
 	public void factionAction(Action a) {
 		throw new IllegalStateException("No faction actions defined for " + name);
+	}
+	
+	
+	protected ResearchKnowledgeSource sourceResearch() {
+		int k = bank.knowledge();
+		if (k >= ResourceConversion.RESEARCHKNOWLEDGECOST) return ResearchKnowledgeSource.BANK;
+		
+		int power = (ResourceConversion.RESEARCHKNOWLEDGECOST - k) * ResourceConversion.FREEKNOWLEDGECOST;
+		int p = spendablePower();
+		if (p >= power) return ResearchKnowledgeSource.BOWL3;
+		
+		int b = maxBurnIncome();
+		if (p + b >= power) return ResearchKnowledgeSource.BOWL2;
+			
+		return ResearchKnowledgeSource.NONE;
+	}
+	
+	/*
+	 * returns a vanilla 'start research' action if 4 knowledge in bank
+	 * tries to do free actions for K if not
+	 */
+	public Vector<Action> researchActions(CanResearch canresearch) {
+		switch(canresearch) {
+		case WITHFED: if (bank.unusedFederations() == 0) return null;
+		case YES:
+			return researchActions();
+		case NO:
+		default:
+			return null;	
+		}
+	}
+
+	/*
+	 * returns a vanilla 'start research' action if 4 knowledge in bank
+	 * tries to do free actions for K if not
+	 */
+	private Vector<Action> researchActions() {
+		Vector<Action> actions = new Vector<Action>();
+		
+		ResearchKnowledgeSource source = sourceResearch();
+		if (source != ResearchKnowledgeSource.NONE) {
+			actions.add(new Action(player, ActionType.RESEARCH, source, "Research with knowledge from " + source));
+		}
+		
+		source = sourceFactionKnowledge(source);
+		if (source != ResearchKnowledgeSource.NONE) {
+			actions.add(new Action(player, ActionType.RESEARCH, source, "Research with knowledge from " + source));
+		}
+		
+ 		return actions;
+	}
+	
+	protected ResearchKnowledgeSource sourceFactionKnowledge(ResearchKnowledgeSource basesource) {
+		return ResearchKnowledgeSource.NONE;
+	}
+	
+	/*
+	 * returns a list of special actions available from tech tiles, faction specials, and academies
+	 * excludes range, dig, and research actions; these are triggered by their respective root actions
+	 */
+	public Vector<Action> specialActions() {
+		return specialactions.availableRoots();
 	}
 	
 	public Action[] gaiaBowlActions() {
@@ -246,13 +313,29 @@ public abstract class Faction {
 		return bank.ore();
 	}
 	
-	public int maxBurn() {
-		return bank.maxBurn();
+	public int qic() {
+		return bank.qic();
 	}
 	
+	/*
+	 * returns the maximum amount of power that can be loaded into bowl 3 by burning
+	 */
+	public int maxBurnIncome() {
+		return bank.maxBurnIncome();
+	}
+	
+	/*
+	 * returns the amount of power currently available in bowl 3 for spending
+	 */
 	public int spendablePower() {
-		// TODO: override this for nevlas
 		return bank.spendablePower();
+	}
+	
+	/*
+	 * returns the amount of power available to spend after bowl 2 burning actions
+	 */
+	public int maxBowl3Spend() {
+		return maxBurnIncome() + spendablePower();
 	}
 	
 	public String toString() {

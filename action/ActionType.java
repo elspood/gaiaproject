@@ -1,27 +1,37 @@
 package action;
 
 import state.Coordinates;
+import faction.ResearchKnowledgeSource;
 import state.State;
+import state.Income;
 
 public enum ActionType {
 	DRAFTFACTION(new State[] {State.FACTIONDRAFT}),
 	DRAFTPLANET(new State[] {State.PLANETDRAFT, State.DRAFTIVITS, State.DRAFTXENOS}, Coordinates.class),
 	CHOOSEBOOSTER(new State[] {State.CHOOSEBOOSTER}),
 	POWERINCOME(new State[] {State.INCOME}),
-	RESOURCETRADE(null),
+	RESOURCETRADE(Income.class),
 	LEECH,
 	MINE,
 	GAIAFORM,
 	UPGRADE,
 	FEDERATE,
-	RESEARCH,
-	PQACTION,
+	RESEARCH(ResearchKnowledgeSource.class),
+	POWERSHOP,
+	QICSHOP,
 	SPECIALACTION,
+	SPECIALINCOME(Income.class),
+	FACTIONFREE,
+	FACTIONSPECIAL,
 	PASS,
-	ENDTURN;
+	ENDTURN(new State[] {State.ENDTURN});
 	
 	private State[] allowedstate = new State[] {State.STARTACTION};
 	private Class parametertype = Integer.class;
+	
+	private ActionType(Class parametertype) {
+		this.parametertype = parametertype;
+	}
 	
 	private ActionType(State[] allowedstate, Class parametertype) {
 		this.allowedstate = allowedstate;

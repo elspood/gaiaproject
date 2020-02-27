@@ -9,6 +9,8 @@ public class Research {
 	private EnumMap<ScienceTrack,TechTile> techtile;
 	private TechTile[] wildcard;
 	private EnumMap<ScienceTrack,Integer>[] level;
+	// TODO: keep valhalla claimed status up to date
+	private EnumMap<ScienceTrack,Boolean> valhallataken;
 	private FederationToken bonus;
 	
 	public Research(EnumMap<ScienceTrack,AdvTech> advtech, EnumMap<ScienceTrack,TechTile> techtile, FederationToken bonus,
@@ -26,6 +28,8 @@ public class Research {
 			level[i] = new EnumMap<ScienceTrack,Integer>(ScienceTrack.class);
 			for (ScienceTrack t : ScienceTrack.values()) level[i].put(t, 0);
 		}
+		valhallataken = new EnumMap<ScienceTrack,Boolean>(ScienceTrack.class);
+		for (ScienceTrack t : ScienceTrack.values()) valhallataken.put(t, false);
 	}
 	
 	public String toString() {
@@ -113,6 +117,24 @@ public class Research {
 		if (lvl == 3) income.add(new Income(ResourceType.CHARGE, 3));
 		if (lvl == 5) income.add(new Income(ResourceType.FED, -1));
 		return income;
+	}
+	
+	public CanResearch canResearch(int player) {
+		boolean canresearchwithfed = false;
+		for (ScienceTrack t : ScienceTrack.values()) {
+			CanResearch cr = canResearch(player, t);
+			if (cr == CanResearch.YES) return cr;
+			if (cr == CanResearch.WITHFED) canresearchwithfed = true;
+		}
+		if (canresearchwithfed) return CanResearch.WITHFED;
+		return CanResearch.NO;
+	}
+	
+	public CanResearch canResearch(int player, ScienceTrack track) {
+		int lvl = level[player].get(track);
+		if (lvl < 4) return CanResearch.YES;
+		if ((lvl == 4) && !valhallataken.get(track)) return CanResearch.WITHFED;
+		return CanResearch.NO;
 	}
 	
 	public static Research randomize(int players, long seed) {

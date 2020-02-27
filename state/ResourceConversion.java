@@ -5,6 +5,11 @@ import action.ActionType;
 
 public class ResourceConversion {
 
+	public static final int FREEQICCOST = 4;
+	public static final int FREEORECOST = 4;
+	public static final int FREEKNOWLEDGECOST = 4;
+	public static final int FREECREDITCOST = 4;
+	public static final int RESEARCHKNOWLEDGECOST =  4;
 	private static final int MAXTRADE = 30;			// extreme edge case of gaiaforming once at every research step
 													// yields a max terran bowl of 6 + 4 + 3 = 13 power
 													// max Hadsch Hallas trade is all 30 credits
@@ -12,8 +17,9 @@ public class ResourceConversion {
 	private static final int ACTIONPOOLSIZE = 25;	// determined empirically from options in max trade
 	private static final int NOTRADE = -1;
 	
+	
 	// TODO: create a version of this for nevlas, who can trade one power for 1K and 1 token for 2 power
-	private static final int[] COST = new int[] {4, 3, 4, 1};	// q, o, k, c
+	private static final int[] COST = new int[] {FREEQICCOST, FREEORECOST, FREEKNOWLEDGECOST, FREECREDITCOST};
 	private static final ResourceType[] TYPE = new ResourceType[] {
 			ResourceType.QIC, ResourceType.ORE, ResourceType.KNOWLEDGE, ResourceType.CREDITS
 	};

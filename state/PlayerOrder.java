@@ -35,6 +35,12 @@ public class PlayerOrder {
 		return turnorder[index];
 	}
 	
+	public void pass() {
+		int player = turnorder[index];
+		passorder[lastpass++] = player;
+		passed[player] = true;
+	}
+	
 	public void startNormalPlay() {
 		draft = NODRAFT;
 		index = 0;
@@ -69,6 +75,7 @@ public class PlayerOrder {
 	 * TODO: implement a leech/income decision, once-around-the-horn counter
 	 */
 	public int nextPlayer() {
+		if ((draft == NODRAFT) && (lastpass == turnorder.length)) return -1;
 		if (draft == REVERSEDRAFT) index--;
 		else index++;
 		if (index == turnorder.length) {
