@@ -111,7 +111,7 @@ public class GameState {
 		PlanetType pt = this.player[player].homePlanet();
 		if (pt != map.get(col, row))
 			throw new IllegalArgumentException("Must start on home planet; [" + col + "," + row + "] isn't " + pt);
-		if (!this.player[player].placeMine(col, row, pt)) 
+		if (!this.player[player].buildMine(col, row, pt)) 
 			throw new IllegalArgumentException("Couldn't place mine at [" + col + "," + row + "]");
 	}
 	
@@ -204,12 +204,12 @@ public class GameState {
 			return gaiaChoices();
 		}
 		
-		Vector<Coordinates> gfs = f.gaiaformerLocations();
+		Vector<Coordinates> gfs = f.usedGaiaformerLocations();
 		int size = gfs.size();
 		for (int i=0; i < size; i++) {
 			Coordinates c = gfs.get(i);
 			if (map.get(c) == PlanetType.TRANSDIM) {
-				map.gaiaform(c);
+				map.gaiaformComplete(c);
 				System.out.println(playerDisplayName(currentplayer) + " gaiaformed at " + c);
 			}
 		}
@@ -254,14 +254,18 @@ public class GameState {
 		
 		// 1. build a mine
 		
+		
 		// 2. gaiaform
+		if (f.canGaiaform(map, research.navigationRange(currentplayer), research.gaiaformingCost(currentplayer)))
+			choices.add(new Action(currentplayer, ActionType.GAIAFORM, null, "Place GaiaFormer"));
 		
 		// 3. upgrade
 		
 		// 4. federate
 		
 		// 5. research
-		choices.addAll(f.researchActions(research.canResearch(currentplayer)));
+		if (f.canResearch(research.canResearch(currentplayer)))
+				choices.add(new Action(currentplayer, ActionType.RESEARCH, null, "Research"));
 		
 		// 6. power/QIC actions
 		choices.addAll(powerQICchoices(currentplayer, f));
@@ -351,7 +355,7 @@ public class GameState {
 			return;
 		}
 		
-		if (!f.placeMine(c, f.homePlanet()))
+		if (!f.buildMine(c, f.homePlanet()))
 			throw new IllegalStateException("No mines left to place for " + playerDisplayName(player));
 		map.build(c, f, Building.MINE);
 		System.out.println(playerDisplayName(player) + " drafted a mine on home planet at " + c);

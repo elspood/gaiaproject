@@ -14,6 +14,7 @@ public enum SpecialAction {
 	BALCASH;				// +4 credits from Baltaks academy
 	
 	public static final int ADVTECHSPECIALS = 3;	// QICCASH, ORE, KNOWLEDGE
+	public static final int RANGEINCREASE = 3;
 	
 	private boolean canberoot = true;	// false if the special action is subservient to another type, like build mine, gaia, or research
 	

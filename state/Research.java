@@ -4,6 +4,9 @@ import java.util.Random;
 import java.util.Vector;
 
 public class Research {
+	
+	public static final int[] NAVIGATIONRANGE = {1, 1, 2, 2, 3, 4};
+	public static final int[] GAIAFORMINGCOST = {Integer.MAX_VALUE, 6, 6, 4, 3, 3};
 
 	private EnumMap<ScienceTrack,AdvTech> advtech;
 	private EnumMap<ScienceTrack,TechTile> techtile;
@@ -117,6 +120,14 @@ public class Research {
 		if (lvl == 3) income.add(new Income(ResourceType.CHARGE, 3));
 		if (lvl == 5) income.add(new Income(ResourceType.FED, -1));
 		return income;
+	}
+	
+	public int navigationRange(int player) {
+		return NAVIGATIONRANGE[level[player].get(ScienceTrack.NAV)];
+	}
+	
+	public int gaiaformingCost(int player) {
+		return GAIAFORMINGCOST[level[player].get(ScienceTrack.GAIA)];
 	}
 	
 	public CanResearch canResearch(int player) {

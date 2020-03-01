@@ -11,6 +11,7 @@ import state.CanResearch;
 import state.Coordinates;
 import state.EndTurnBonus;
 import state.Income;
+import state.Map;
 import state.PlanetType;
 import state.ResourceConversion;
 import state.ResourceType;
@@ -19,6 +20,10 @@ import state.ScienceTrack;
 import state.TechTile;
 
 public abstract class Faction {
+
+	public static final int MAXMINES = 8;
+	public static final int MAXTS = 4;
+	public static final int MAXLABS = 3;
 	
 	protected static Faction[] factions = {
 			new HadschHallas(), new Ivits(), new Taklons(), new Terran(), new Xenos()
@@ -62,12 +67,17 @@ public abstract class Faction {
 	protected String name = null;
 	
 	protected Bank bank = new Bank();
-	protected Coordinates[] mine = new Coordinates[8];
-	protected Coordinates[] ts = new Coordinates[4];
-	protected Coordinates[] lab = new Coordinates[3];
+	protected Coordinates[] mine = new Coordinates[MAXMINES];
+	protected int mines = 0;
+	protected Coordinates[] ts = new Coordinates[MAXTS];
+	protected int traders = 0;
+	protected Coordinates[] lab = new Coordinates[MAXLABS];
+	protected int labs = 0;
 	protected Coordinates[] acad = new Coordinates[2];
 	protected Coordinates pi = null;
 	protected Coordinates[] gf = new Coordinates[3];
+	protected int gaiaformers = 0;
+	protected Coordinates lostplanet = null;
 	
 	protected int uniques = 0;
 	protected int gaias = 0;
@@ -89,31 +99,30 @@ public abstract class Faction {
 		return factions;
 	}
 	
-	public boolean placeMine(int col, int row, PlanetType type) {
+	public boolean buildMine(int col, int row, PlanetType type) {
 		Coordinates c = new Coordinates(col, row);
-		return placeMine(c, type);
+		return buildMine(c, type);
 	}
-	
-	public boolean placeMine(Coordinates c, PlanetType type) {
-		for (int i=0; i < 8; i++) if (mine[i] == null) {
-			mine[i] = c;
-			if (colonized.containsKey(type)) {
-				uniques++;
-				colonized.put(type, true);
-			}
-			if (type == PlanetType.GAIA) {
-				gaias++;
-				int gt = TechTile.GAIA.ordinal();
-				if ((techtile[gt] != null) && (!coveredtile[gt])) {
-					Income[] inc = TechTile.GAIA.income();
-					for (Income income : inc) income(income);
-				}
-			}
-			return true;
+
+	public boolean buildMine(Coordinates c, PlanetType type) {
+		if (mines == MAXMINES) return false;
+		mine[mines++] = c;
+		if (!colonized.containsKey(type)) {
+			uniques++;
+			colonized.put(type, true);
 		}
-		return false;
+		// TODO: move all scoring for 'build a mine' to a single function
+		if (type == PlanetType.GAIA) {
+			gaias++;
+			int gt = TechTile.GAIA.ordinal();
+			if ((techtile[gt] != null) && (!coveredtile[gt])) {
+				Income[] inc = TechTile.GAIA.income();
+				for (Income income : inc) income(income);
+			}
+		}
+		return true;
 	}
-	
+
 	public void setPower(BowlState s) {
 		bank.setPower(s);
 	}
@@ -125,10 +134,7 @@ public abstract class Faction {
 	}
 	
 	public int mines() {
-		// TODO: count lost planet, maybe refactor to track mine count
-		for (int i=0; i < 8; i++)
-			if (mine[i] == null) return i;
-		return 8;
+		return mines + ((lostplanet != null) ? 1 : 0);
 	}
 	
 	public int ts() {
@@ -208,6 +214,64 @@ public abstract class Faction {
 		return ResearchKnowledgeSource.NONE;
 	}
 	
+	public boolean canResearch(CanResearch canresearch) {
+		Vector<Action> actions = researchActions(canresearch);
+		return actions.size() > 0;
+	}
+	
+	public boolean canMine() {
+		if (mines == MAXMINES) return false;
+		return true;
+	}
+
+	public boolean canGaiaform(Map map, int baserange, int gaiaformingcost) {
+		boolean available = false;
+		for (int i=0; i < gaiaformers; i++) if (gf[i].equals(Coordinates.HANGAR)) {
+			available = true;
+			break;
+		}
+		if (!available) return false;
+		
+		Vector<Coordinates> unused = map.unusedTransdims();
+		if (unused.size() == 0) return false;
+		if (specialactions.rangeAvailable()) baserange += SpecialAction.RANGEINCREASE;
+		
+		int range = baserange + maxGaiaformingRangeExtension(gaiaformingcost);
+		
+		for (Coordinates c : unused) if (reachable(map, c, range)) return true;
+		
+		return false;
+	}
+	
+	/*
+	 * checks every possible starting building for reachability to the target
+	 * TODO: override for ivits to also start from space stations
+	 */
+	public boolean reachable(Map map, Coordinates target, int navigation) {
+		for (int i=0; i < mines; i++) 
+			if (map.range(target, mine[i]) <= navigation) return true;
+		for (int i=0; i < traders; i++) 
+			if (map.range(target, ts[i]) <= navigation) return true;
+		for (int i=0; i < labs; i++) 
+			if (map.range(target, lab[i]) <= navigation) return true;
+		for (int i=0; i < 2; i++) 
+			if ((acad[i] != null) && map.range(target, acad[i]) <= navigation) return true;
+		if ((pi != null) && (map.range(target, pi) <= navigation)) return true;
+		if ((lostplanet != null) && (map.range(target, lostplanet) <= navigation)) return true;
+
+		return false;
+	}
+	
+	/*
+	 * calculates the maximum possible range extension while still retaining the power token + gaiaformer requirement
+	 */
+	private int maxGaiaformingRangeExtension(int minpowertokens) {
+		// TODO: override for gleens, when they can't get QIC for range
+		// TODO: override for HH, who can use cash for QIC
+		// TODO: override for Baltaks, who can use GFs for QIC (careful to leave one to gaiaform with)
+		return bank.maxRangeExtension(minpowertokens);
+	}
+
 	/*
 	 * returns a vanilla 'start research' action if 4 knowledge in bank
 	 * tries to do free actions for K if not
@@ -262,19 +326,17 @@ public abstract class Faction {
 	
 	public void income(Income inc) {
 		if (inc.type() == ResourceType.GF) {
-			for (int i=0; i < gf.length; i++) if (gf[i] == null) {
-				gf[i] = Coordinates.HANGAR;
-				return;
-			}
-			throw new IllegalStateException("No room for additional gaiaformer in hangar");
+			gf[gaiaformers++] = Coordinates.HANGAR;
+			return;
 		}
 		bank.income(inc);
 	}
 	
-	public Vector<Coordinates> gaiaformerLocations() {
+	public Vector<Coordinates> usedGaiaformerLocations() {
 		Vector<Coordinates> locations = new Vector<Coordinates>();
-		for (Coordinates c : gf) if ((c != null) && (c.col() >= 0) && (c.row() >= 0))
-				locations.add(c);
+		for (int i=0; i < gaiaformers; i++)
+			if (!gf[i].equals(Coordinates.HANGAR) && !gf[i].equals(Coordinates.GAIABOWL))
+				locations.add(gf[i]);
 		return locations;
 	}
 	

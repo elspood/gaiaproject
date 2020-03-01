@@ -10,6 +10,7 @@ public class ResourceConversion {
 	public static final int FREEKNOWLEDGECOST = 4;
 	public static final int FREECREDITCOST = 4;
 	public static final int RESEARCHKNOWLEDGECOST =  4;
+	public static final int RANGEPERQIC = 2;
 	private static final int MAXTRADE = 30;			// extreme edge case of gaiaforming once at every research step
 													// yields a max terran bowl of 6 + 4 + 3 = 13 power
 													// max Hadsch Hallas trade is all 30 credits

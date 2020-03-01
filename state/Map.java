@@ -1,5 +1,6 @@
 package state;
 
+import java.util.Random;
 import java.util.Vector;
 import faction.Faction;
 
@@ -7,6 +8,8 @@ public class Map {
 	
 	public static final int WIDTH = 21;
 	public static final int HEIGHT = 13;
+	
+	public static final int UNKNOWNRANGE = -1;
 	
 	public static final PlanetType[][] F1 = {
 			{null, PlanetType.SPACE, PlanetType.DESERT, PlanetType.SPACE},
@@ -92,6 +95,10 @@ public class Map {
 	private Faction[][] occupant = new Faction[WIDTH][HEIGHT];
 	private Building[][] building = new Building[WIDTH][HEIGHT];
 	
+	private Vector<Coordinates> unusedtransdims = new Vector<Coordinates>();
+	
+	private int[][] range = new int[WIDTH * HEIGHT][WIDTH * HEIGHT];
+	
 	public Map() {
 		init(
 				F1, 11, 2, 0,
@@ -115,7 +122,15 @@ public class Map {
 		return get(c.col(), c.row());
 	}
 	
-	public void gaiaform(Coordinates c) {
+	public Vector<Coordinates> unusedTransdims() {
+		return unusedtransdims;
+	}
+	
+	public void startGaiaforming(Coordinates c) {
+		unusedtransdims.remove(c);
+	}
+	
+	public void gaiaformComplete(Coordinates c) {
 		grid[c.col()][c.row()] = PlanetType.GAIA;
 	}
 	
@@ -138,6 +153,7 @@ public class Map {
 		building[col][row] = b;
 	}
 	
+	// TODO: refactor this to maintain a realtime inventory of available planets
 	public Coordinates[] availablePlanets(PlanetType type) {
 		Vector<Coordinates> planets = new Vector<Coordinates>();
 		for (int i=0; i < WIDTH; i++)
@@ -195,9 +211,106 @@ public class Map {
 						throw new IllegalArgumentException("Overlapping tile at [" + ct + "," + rt + "] placing tile " + 
 								(i/4 + 1) + "\n" + this);
 					grid[ct][rt] = tile[c][r];
+					if (tile[c][r] == PlanetType.TRANSDIM) unusedtransdims.add(new Coordinates(ct, rt));
 					//System.out.println(ct + "," + rt + ": " + tile[c][r] + " (" + c + "," + r + ")");
 				}
 		}
+		
+		calculateRangeMatrix();
+	}
+	
+	public int range(Coordinates x1, Coordinates x2) {
+		return range(x1.col(), x1.row(), x2.col(), x2.row());
+	}
+	
+	public int range(int c1, int r1, int c2, int r2) {
+		int i = c1 + r1 * WIDTH;
+		int j = c2 + r2 * WIDTH;
+		return range[i][j];
+	}
+
+	private void calculateRangeMatrix() {
+		for (int i=0; i < WIDTH * HEIGHT; i++) {
+			range[i][i] = 0;
+			for (int j=0; j < i; j++) {
+				range[i][j] = UNKNOWNRANGE;
+				range[j][i] = UNKNOWNRANGE;
+			}
+		}
+
+		boolean updated = true;
+		int distance = 0;
+		while (updated) {
+			updated = false;
+			distance++;
+			// System.out.println("Connecting hexes at range " + distance);
+			for (int i=0; i < WIDTH * HEIGHT; i++) {
+				int c1 = i % WIDTH;
+				int r1 = i / WIDTH;
+				if (grid[c1][r1] == PlanetType.NOTHING) continue;
+				for (int j=0; j < i; j++) {
+					int c2 = j % WIDTH;
+					int r2 = j / WIDTH;
+					if (grid[c2][r2] == PlanetType.NOTHING) continue;
+					if (distance == 1) {
+						if (adjacent(c1, r1, c2, r2)) {
+							range[i][j] = 1;
+							range[j][i] = 1;
+							updated = true;
+						}
+					} else if (range[i][j] == UNKNOWNRANGE) {
+						Vector<Coordinates> neighbors = neighbors(c1, r1);
+						for (Coordinates x : neighbors) {
+							int i1 = x.col() + x.row() * WIDTH;
+							if (range[i1][j] == distance - 1) {
+								range[i][j] = distance;
+								range[j][i] = distance;
+								updated = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// System.out.println("Last path found at range " + distance);
+	}
+
+	/*
+	 * return only non-NOTHING neighboring hexes
+	 */
+	public Vector<Coordinates> neighbors(Coordinates x) {
+		return neighbors(x.col(), x.row());
+	}
+	
+	/*
+	 * return only non-NOTHING neighboring hexes
+	 */
+	public Vector<Coordinates> neighbors(int col, int row) {
+		Vector<Coordinates> neighbors = new Vector<Coordinates>();
+		for (int i = Math.max(0, col - 1); i <= Math.min(WIDTH - 1, col + 1); i++)
+			for (int j = Math.max(0, row - 1); j <= Math.min(HEIGHT - 1, row + 1); j++)
+				if (adjacent(col, row, i, j) && (grid[i][j] != PlanetType.NOTHING))
+					neighbors.add(new Coordinates(i, j));
+		return neighbors;
+	}
+	
+	public static boolean adjacent(Coordinates x1, Coordinates x2) {
+		return adjacent(x1.col(), x1.row(), x2.col(), x2.row());
+	}
+	
+	public static boolean adjacent(int c1, int r1, int c2, int r2) {
+		if (c1 == c2)
+			return (Math.abs(r1 - r2) == 1);
+		if (r1 == r2)
+			return (Math.abs(c1 - c2) == 1);
+		if (c1 % 2 == 0) {
+			if (Math.abs(c1 - c2) == 1) return (r1 - r2) == 1;
+		} else {
+			if (Math.abs(c1 - c2) == 1) return (r2 - r1) == 1;
+		}
+		return false;
 	}
 	
 	public String toString() {
@@ -222,9 +335,51 @@ public class Map {
 		return ts;
 	}
 	
+	private static void adjacencyTest(Coordinates x) {
+		int count = 0;
+		int col = x.col();
+		int row = x.row();
+		for (int i = col - 2; i <= col + 2; i++) {
+			for (int j = row - 2; j <= row + 2; j++) {
+				Coordinates y = new Coordinates(i, j);
+				boolean adjacent = adjacent(x, y);
+				if (adjacent) count++;
+				System.out.print(x + " is " + (adjacent ? "" : "NOT ") + "adjacent to " + y + "; ");
+			}
+			System.out.println();
+		}
+		System.out.println(count + " total adjacent hexes to " + x);
+	}
+	
+	private void rangeTest() {
+		Random rand = new Random();
+		for (int i=0; i < 10; i++) {
+			Coordinates x, y;
+			do {
+				int c1 = rand.nextInt(WIDTH);
+				int r1 = rand.nextInt(HEIGHT);
+				x = new Coordinates(c1, r1);
+			} while (get(x) == PlanetType.NOTHING) ;
+			do {
+				int c2 = rand.nextInt(WIDTH);
+				int r2 = rand.nextInt(HEIGHT);
+				y = new Coordinates(c2, r2);
+			} while (get(y) == PlanetType.NOTHING);
+			
+			System.out.println(x + " is " + range(x, y) + " hexes from " + y);
+		}
+	}
+	
 	public static void main(String[] args) {
 		Map m = new Map();
 		System.out.println("map initialized: ");
 		System.out.println(m);
+		
+		Coordinates even = new Coordinates(8, 6);
+		adjacencyTest(even);
+		Coordinates odd = new Coordinates(9, 6);
+		adjacencyTest(odd);
+		
+		m.rangeTest();
 	}
 }

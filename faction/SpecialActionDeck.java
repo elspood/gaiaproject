@@ -19,6 +19,9 @@ public class SpecialActionDeck {
 	private boolean pibuilt = false;
 	private boolean hasfactionaction = false;
 	private boolean hascharger = false;
+	
+	// TODO: set this when adding booster to deck
+	private SpecialAction boostertype = null;
 
 	// TODO: reset these properly (e.g. PI action made available after PI built, round resets)
 	// TODO: make sure all additional actions are set properly as to whether they can be root
@@ -71,6 +74,7 @@ public class SpecialActionDeck {
 	
 	/*
 	 * returns available root actions (which excludes things like dig, fly, and research)
+	 * dig and fly are used in building actions, research in research actions
 	 */
 	public Vector<Action> availableRoots() {
 		Vector<Action> choices = new Vector<Action>();
@@ -83,5 +87,9 @@ public class SpecialActionDeck {
 
 	public boolean factionAvailable() {
 		return available[FACTION];
+	}
+	
+	public boolean rangeAvailable() {
+		return available[BOOSTER] && (boostertype == SpecialAction.RANGE3);
 	}
 }

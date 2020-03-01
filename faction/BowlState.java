@@ -14,6 +14,8 @@ public class BowlState {
 	
 	public static final int BRAINSTONEVALUE = 3;
 	
+	// TODO: handle moving the brainstone to the gaia bowl
+	
 	public BowlState(boolean taklons, int b1, int b2, int b3) {
 		if (taklons) brainstone = 1;
 		init(b1, b2, b3);
@@ -45,6 +47,18 @@ public class BowlState {
 		if (b2 < 2) return 0;
 		if (brainstone == 2) return (b2 + 1) / 2 + 2;
 		return b2 / 2;
+	}
+	
+	/*
+	 * returns the maximum new power that could be charged into bowl 3 by burning bowl 2 power
+	 * while maintaining the specified minimum total token reserve
+	 */
+	public int maxBurnIncome(int mintokenreserve) {
+		if (b2 < 2) return 0;
+		int tokens = b1 + b2 + b3 + brainstone;
+		int reservemax = Math.max(0, (tokens - mintokenreserve)/2);
+		int max = (brainstone == 2) ? (b2 + 1) / 2 + 2 : b2 / 2;
+		return Math.min(reservemax, max);
 	}
 	
 	public int spendablePower() {

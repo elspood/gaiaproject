@@ -4,6 +4,7 @@ import java.util.Vector;
 
 import state.FederationToken;
 import state.Income;
+import state.ResourceConversion;
 
 public class Bank {
 	
@@ -118,6 +119,16 @@ public class Bank {
 	public int unusedFederations() {
 		// TODO: make sure used federation tile tracker is kept current
 		return unusedfeds;
+	}
+	
+	/*
+	 * convert all possible banked resources to improve range, while keeping minimum token requirement
+	 */
+	public int maxRangeExtension(int minpowertokens) {
+		minpowertokens -= ore; // can convert ore to tokens if necessary
+		int maxbowl3power = bowls.maxBurnIncome(minpowertokens) + spendablePower();
+		int qic = this.qic + spendablePower() / ResourceConversion.FREEQICCOST;
+		return qic * ResourceConversion.RANGEPERQIC;
 	}
 	
 	public String toString() {
