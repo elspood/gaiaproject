@@ -7,10 +7,6 @@ import java.util.Vector;
 
 import action.Action;
 import action.ActionType;
-import faction.HadschHallas;
-import faction.Taklons;
-import faction.Terran;
-import faction.Xenos;
 import state.FinalScore;
 import state.GameState;
 import state.Map;

@@ -5,10 +5,10 @@ import action.ActionType;
 
 public class ResourceConversion {
 
-	public static final int FREEQICCOST = 4;
-	public static final int FREEORECOST = 4;
-	public static final int FREEKNOWLEDGECOST = 4;
-	public static final int FREECREDITCOST = 4;
+	public static final int POWERTOQICCOST = 4;
+	public static final int POWERTOORECOST = 3;
+	public static final int POWERTOKNOWLEDGECOST = 4;
+	public static final int POWERTOCREDITCOST = 1;
 	public static final int RESEARCHKNOWLEDGECOST =  4;
 	public static final int RANGEPERQIC = 2;
 	private static final int MAXTRADE = 30;			// extreme edge case of gaiaforming once at every research step
@@ -20,7 +20,7 @@ public class ResourceConversion {
 	
 	
 	// TODO: create a version of this for nevlas, who can trade one power for 1K and 1 token for 2 power
-	private static final int[] COST = new int[] {FREEQICCOST, FREEORECOST, FREEKNOWLEDGECOST, FREECREDITCOST};
+	private static final int[] COST = new int[] {POWERTOQICCOST, POWERTOORECOST, POWERTOKNOWLEDGECOST, POWERTOCREDITCOST};
 	private static final ResourceType[] TYPE = new ResourceType[] {
 			ResourceType.QIC, ResourceType.ORE, ResourceType.KNOWLEDGE, ResourceType.CREDITS
 	};

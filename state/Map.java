@@ -96,8 +96,16 @@ public class Map {
 	private Building[][] building = new Building[WIDTH][HEIGHT];
 	
 	private Vector<Coordinates> unusedtransdims = new Vector<Coordinates>();
+	private Vector<Coordinates> emptyplanets = new Vector<Coordinates>();
+	private Vector<Coordinates> emptyspace = new Vector<Coordinates>();
 	
+	// TODO: make most of the map static to support static range references and otherwise avoid passing map parameters around
 	private int[][] range = new int[WIDTH * HEIGHT][WIDTH * HEIGHT];
+	private static int[][] distance = new int[WIDTH * HEIGHT][WIDTH * HEIGHT];
+	
+	static {
+		calculateDistanceMatrix();
+	}
 	
 	public Map() {
 		init(
@@ -124,6 +132,10 @@ public class Map {
 	
 	public Vector<Coordinates> unusedTransdims() {
 		return unusedtransdims;
+	}
+	
+	public Vector<Coordinates> emptySpace() {
+		return (Vector<Coordinates>)emptyspace.clone();
 	}
 	
 	public void startGaiaforming(Coordinates c) {
@@ -212,11 +224,23 @@ public class Map {
 								(i/4 + 1) + "\n" + this);
 					grid[ct][rt] = tile[c][r];
 					if (tile[c][r] == PlanetType.TRANSDIM) unusedtransdims.add(new Coordinates(ct, rt));
+					else if (tile[c][r] == PlanetType.SPACE) emptyspace.add(new Coordinates(ct, rt));
+					else if (tile[c][r] != PlanetType.NOTHING) emptyplanets.add(new Coordinates(ct, rt));
 					//System.out.println(ct + "," + rt + ": " + tile[c][r] + " (" + c + "," + r + ")");
 				}
 		}
 		
 		calculateRangeMatrix();
+	}
+	
+	public static int distance(Coordinates x1, Coordinates x2) {
+		return distance(x1.col(), x1.row(), x2.col(), x2.row());
+	}
+	
+	public static int distance(int c1, int r1, int c2, int r2) {
+		int i = c1 + r1 * WIDTH;
+		int j = c2 + r2 * WIDTH;
+		return distance[i][j];
 	}
 	
 	public int range(Coordinates x1, Coordinates x2) {
@@ -227,6 +251,52 @@ public class Map {
 		int i = c1 + r1 * WIDTH;
 		int j = c2 + r2 * WIDTH;
 		return range[i][j];
+	}
+	
+
+
+	private static void calculateDistanceMatrix() {
+		for (int i=0; i < WIDTH * HEIGHT; i++) {
+			distance[i][i] = 0;
+			for (int j=0; j < i; j++) {
+				distance[i][j] = UNKNOWNRANGE;
+				distance[j][i] = UNKNOWNRANGE;
+			}
+		}
+
+		boolean updated = true;
+		int range = 0;
+		while (updated) {
+			updated = false;
+			range++;
+			// System.out.println("Connecting hexes at range " + distance);
+			for (int i=0; i < WIDTH * HEIGHT; i++) {
+				int c1 = i % WIDTH;
+				int r1 = i / WIDTH;
+				for (int j=0; j < i; j++) {
+					int c2 = j % WIDTH;
+					int r2 = j / WIDTH;
+					if (range == 1) {
+						if (adjacent(c1, r1, c2, r2)) {
+							distance[i][j] = 1;
+							distance[j][i] = 1;
+							updated = true;
+						}
+					} else if (distance[i][j] == UNKNOWNRANGE) {
+						Vector<Coordinates> neighbors = neighboringHexes(c1, r1);
+						for (Coordinates x : neighbors) {
+							int i1 = x.col() + x.row() * WIDTH;
+							if (distance[i1][j] == range - 1) {
+								distance[i][j] = range;
+								distance[j][i] = range;
+								updated = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
 	}
 
 	private void calculateRangeMatrix() {
@@ -277,6 +347,18 @@ public class Map {
 		// System.out.println("Last path found at range " + distance);
 	}
 
+	public static Vector<Coordinates> neighboringHexes(Coordinates x) {
+		return neighboringHexes(x.col(), x.row());
+	}
+		
+	public static Vector<Coordinates> neighboringHexes(int col, int row) {
+		Vector<Coordinates> neighbors = new Vector<Coordinates>();
+		for (int i = Math.max(0, col - 1); i <= Math.min(WIDTH - 1, col + 1); i++)
+			for (int j = Math.max(0, row - 1); j <= Math.min(HEIGHT - 1, row + 1); j++)
+				if (adjacent(col, row, i, j)) neighbors.add(new Coordinates(i, j));
+		return neighbors;
+	}
+
 	/*
 	 * return only non-NOTHING neighboring hexes
 	 */
@@ -284,8 +366,8 @@ public class Map {
 		return neighbors(x.col(), x.row());
 	}
 	
-	/*
-	 * return only non-NOTHING neighboring hexes
+	/**
+	 * returns only non-NOTHING neighboring hexes
 	 */
 	public Vector<Coordinates> neighbors(int col, int row) {
 		Vector<Coordinates> neighbors = new Vector<Coordinates>();

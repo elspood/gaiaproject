@@ -63,7 +63,7 @@ public class Bank {
 	/**
 	 * @param powerIncome A vector of atomic power income actions (charge and new tokens)
 	 * @return A vector of possible bowl states after charging in various orders;
-	 * 			If only one state is possible, the bank is updated with the new state and null is returned
+	 * 			If only one NEW state is possible, the bank is updated with the new state and null is returned
 	 */
 	public BowlState[] powerIncome(Vector<Income> powerIncome) {
 		if (powerIncome.size() == 0) return null;
@@ -127,7 +127,7 @@ public class Bank {
 	public int maxRangeExtension(int minpowertokens) {
 		minpowertokens -= ore; // can convert ore to tokens if necessary
 		int maxbowl3power = bowls.maxBurnIncome(minpowertokens) + spendablePower();
-		int qic = this.qic + spendablePower() / ResourceConversion.FREEQICCOST;
+		int qic = this.qic + spendablePower() / ResourceConversion.POWERTOQICCOST;
 		return qic * ResourceConversion.RANGEPERQIC;
 	}
 	

@@ -66,8 +66,10 @@ public abstract class Faction {
 	protected ScienceTrack starttrack = null;
 	protected String name = null;
 	
+	protected IFactionPlanetGroupManager planetgroupmanager;
 	protected Bank bank = new Bank();
 	protected Coordinates[] mine = new Coordinates[MAXMINES];
+	protected boolean[] opponentsinrange = new boolean[MAXMINES];
 	protected int mines = 0;
 	protected Coordinates[] ts = new Coordinates[MAXTS];
 	protected int traders = 0;
@@ -77,6 +79,7 @@ public abstract class Faction {
 	protected Coordinates pi = null;
 	protected Coordinates[] gf = new Coordinates[3];
 	protected int gaiaformers = 0;
+	protected int unusedgaiaformers = 0;
 	protected Coordinates lostplanet = null;
 	
 	protected int uniques = 0;
@@ -90,9 +93,10 @@ public abstract class Faction {
 	
 	protected int player;
 	
-	public void init(int player) {
+	public void init(int player, Map map) {
 		this.player = player;
 		specialactions = new SpecialActionDeck(player, specialactionforacademy, specialactionforpi, specialactionforfaction);
+		planetgroupmanager = new FactionPlanetGroupManager(map);
 	}
 	
 	public static Faction[] choices() {
@@ -100,6 +104,8 @@ public abstract class Faction {
 	}
 	
 	public boolean buildMine(int col, int row, PlanetType type) {
+		// TODO: add parameter for whether opponents are in range (always set this when mine is first built, and update for new mines)
+		// TODO: always update/merge planet groups with each new build
 		Coordinates c = new Coordinates(col, row);
 		return buildMine(c, type);
 	}
@@ -204,7 +210,7 @@ public abstract class Faction {
 		int k = bank.knowledge();
 		if (k >= ResourceConversion.RESEARCHKNOWLEDGECOST) return ResearchKnowledgeSource.BANK;
 		
-		int power = (ResourceConversion.RESEARCHKNOWLEDGECOST - k) * ResourceConversion.FREEKNOWLEDGECOST;
+		int power = (ResourceConversion.RESEARCHKNOWLEDGECOST - k) * ResourceConversion.POWERTOKNOWLEDGECOST;
 		int p = spendablePower();
 		if (p >= power) return ResearchKnowledgeSource.BOWL3;
 		
@@ -214,28 +220,43 @@ public abstract class Faction {
 		return ResearchKnowledgeSource.NONE;
 	}
 	
+	public boolean canFederate() {
+		// TODO: calculate the maximum possible available satellites after free conversions
+		int maxsatellites = 100;
+		return planetgroupmanager.canFederate(maxsatellites);
+	}
+	
 	public boolean canResearch(CanResearch canresearch) {
 		Vector<Action> actions = researchActions(canresearch);
 		return actions.size() > 0;
 	}
 	
+	// TODO: finish this with mine affordability
 	public boolean canMine() {
 		if (mines == MAXMINES) return false;
 		return true;
 	}
+	
+	/**
+	 * determines whether a mine can be afforded with the current bank given the additional ore/qic requirements
+	 * qic might be needed for gaia planets and/or range; ore might be needed for terraforming or gleens gaia planets
+	 */
+	protected boolean canAffordMine(int qicneeded, int terraformingore) {
+		int credits = bank.credits();
+		int qic = bank.qic();
+		int ore = bank.ore();
+		int power = maxBowl3Spend();
+		return false;
+	}
 
 	public boolean canGaiaform(Map map, int baserange, int gaiaformingcost) {
-		boolean available = false;
-		for (int i=0; i < gaiaformers; i++) if (gf[i].equals(Coordinates.HANGAR)) {
-			available = true;
-			break;
-		}
-		if (!available) return false;
+		if (unusedgaiaformers == 0) return false;
 		
 		Vector<Coordinates> unused = map.unusedTransdims();
 		if (unused.size() == 0) return false;
 		if (specialactions.rangeAvailable()) baserange += SpecialAction.RANGEINCREASE;
 		
+		// TODO: turn this function call into a lookup table
 		int range = baserange + maxGaiaformingRangeExtension(gaiaformingcost);
 		
 		for (Coordinates c : unused) if (reachable(map, c, range)) return true;
@@ -243,7 +264,68 @@ public abstract class Faction {
 		return false;
 	}
 	
-	/*
+	/**
+	 * returns true if the faction can afford a trading station upgrade with the current bank
+	 * TODO: add TS affordability to precalculated table
+	 */
+	private boolean canAffordTSUpgrade(boolean cheap) {
+		return false;
+	}
+	
+	/**
+	 * returns true if the faction can afford a lab upgrade with the current bank
+	 * TODO: add lab affordability to precalculated table
+	 */
+	private boolean canAffordLabUpgrade() {
+		return false;
+	}
+	
+	/**
+	 * returns true if the faction can afford a PI upgrade with the current bank
+	 * TODO: add PI affordability to precalculated table
+	 */
+	private boolean canAffordPIUpgrade() {
+		return false;
+	}
+	
+	/**
+	 * returns true if the faction can afford an academy upgrade with the current bank
+	 * TODO: add academy affordability to precalculated table
+	 */
+	private boolean canAffordAcademyUpgrade() {
+		return false;
+	}
+	
+	/**
+	 * returns true if the faction can afford a building upgrade
+	 * TODO: override for bescods' reversed PI/academy
+	 */
+	public boolean canUpgrade() {
+		if ((mines > 0) && (traders < MAXTS)) {
+			// TODO: update mine status with range 2 information every time a new mine is built
+			boolean cheap = opponentsinrange[0];
+			if (canAffordTSUpgrade(cheap)) return true;
+			// if we couldn't afford a cheap TS, we can't afford any other upgrade
+			if (cheap) return false;
+			// if the first mine wasn't cheap, try to find one that is
+			// TODO: disallow lantids upgrading a piggyback mine
+			for (int i=1; i < mines; i++) if (opponentsinrange[i]) {
+				return canAffordTSUpgrade(true);
+			}
+			// if we couldn't afford a trading station upgrade, we can't afford any others, either
+			return false;
+		}
+		if (traders > 0) {
+			// if we can't afford a lab upgrade, we can't afford anything else more expensive
+			if (labs < MAXLABS) return canAffordLabUpgrade();
+			// if we can't afford a PI upgrade, we can't afford an academy
+			if (pi == null) return canAffordPIUpgrade();
+		}
+		if ((labs > 0) && ((acad[0] == null) || (acad[1] == null))) return canAffordAcademyUpgrade();
+		return false;
+	}
+	
+	/**
 	 * checks every possible starting building for reachability to the target
 	 * TODO: override for ivits to also start from space stations
 	 */
@@ -262,7 +344,7 @@ public abstract class Faction {
 		return false;
 	}
 	
-	/*
+	/**
 	 * calculates the maximum possible range extension while still retaining the power token + gaiaformer requirement
 	 */
 	private int maxGaiaformingRangeExtension(int minpowertokens) {
@@ -272,7 +354,7 @@ public abstract class Faction {
 		return bank.maxRangeExtension(minpowertokens);
 	}
 
-	/*
+	/**
 	 * returns a vanilla 'start research' action if 4 knowledge in bank
 	 * tries to do free actions for K if not
 	 */
@@ -287,7 +369,7 @@ public abstract class Faction {
 		}
 	}
 
-	/*
+	/**
 	 * returns a vanilla 'start research' action if 4 knowledge in bank
 	 * tries to do free actions for K if not
 	 */
@@ -311,7 +393,7 @@ public abstract class Faction {
 		return ResearchKnowledgeSource.NONE;
 	}
 	
-	/*
+	/**
 	 * returns a list of special actions available from tech tiles, faction specials, and academies
 	 * excludes range, dig, and research actions; these are triggered by their respective root actions
 	 */
@@ -379,21 +461,22 @@ public abstract class Faction {
 		return bank.qic();
 	}
 	
-	/*
+	/**
 	 * returns the maximum amount of power that can be loaded into bowl 3 by burning
+	 * does not include power currently available in bowl 3
 	 */
 	public int maxBurnIncome() {
 		return bank.maxBurnIncome();
 	}
 	
-	/*
+	/**
 	 * returns the amount of power currently available in bowl 3 for spending
 	 */
 	public int spendablePower() {
 		return bank.spendablePower();
 	}
 	
-	/*
+	/**
 	 * returns the amount of power available to spend after bowl 2 burning actions
 	 */
 	public int maxBowl3Spend() {

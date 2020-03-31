@@ -25,4 +25,16 @@ public enum PlanetType {
 	public String toString() {
 		return abbr + "";
 	}
+	
+	public static final int terraformingSteps(PlanetType a, PlanetType b) {
+		int steps = Math.abs(a.ordinal() - b.ordinal());
+		if (steps > 3) return PLANETCYCLE.length - steps;
+		return steps;
+	}
+	
+	public static void main(String[] args) {
+		for (PlanetType a : PLANETCYCLE)
+			for (PlanetType b : PLANETCYCLE)
+				System.out.println ("Factions who live on " + a.name() + " require " + terraformingSteps(a, b) + " terraforming steps to mine on " + b.name());
+	}
 }

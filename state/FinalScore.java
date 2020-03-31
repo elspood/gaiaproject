@@ -1,6 +1,5 @@
 package state;
 import java.util.Random;
-import java.util.Vector;
 
 public enum FinalScore {
 	BUILDFED,

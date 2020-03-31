@@ -26,7 +26,7 @@ public class GameState {
 	// TODO: make a harness that replays an entire game from an action log
 	private Vector<Action> actionlist = new Vector<Action>();
 	
-	/*
+	/**
 	 * initialize from pre-defined board conditions
 	 */
 	public GameState(int players, Map map, RoundScore[] roundscore, FinalScore[] victoryconditions,
@@ -44,7 +44,7 @@ public class GameState {
 		playerorder.startNormalDraft();
 	}
 	
-	/*
+	/**
 	 * choose game options instead of starting from pre-defined board
 	 */
 	public GameState(int players, boolean clockwise) {
@@ -94,6 +94,7 @@ public class GameState {
 					" argument; received " + a.info().getClass().getName());
 		
 		// TODO: make sure that any forced decisions also get added to the action log
+		// TODO: don't add 'start action' phase actions to log; only add atomic free actions or fully-defined action phase actions
 		actionlist.add(a);
 		switch (t) {
 		case DRAFTFACTION: draftFaction(a); break;
@@ -253,13 +254,16 @@ public class GameState {
 		Vector<Action> choices = new Vector<Action>();
 		
 		// 1. build a mine
-		
+		if (f.canMine())
+			choices.add(new Action(currentplayer, ActionType.MINE, null, "Build a mine"));
 		
 		// 2. gaiaform
 		if (f.canGaiaform(map, research.navigationRange(currentplayer), research.gaiaformingCost(currentplayer)))
 			choices.add(new Action(currentplayer, ActionType.GAIAFORM, null, "Place GaiaFormer"));
 		
 		// 3. upgrade
+		if (f.canUpgrade())
+			choices.add(new Action(currentplayer, ActionType.UPGRADE, null, "Upgrade a building"));
 		
 		// 4. federate
 		
@@ -310,7 +314,7 @@ public class GameState {
 		
 		this.player[player] = f;
 		PlanetType type = f.homePlanet();
-		f.init(player);
+		f.init(player, map);
 
 		for (int j=0; j < factionchoices.length; j++) {
 			if ((factionchoices[j] != null) && (factionchoices[j].homePlanet() == type))
